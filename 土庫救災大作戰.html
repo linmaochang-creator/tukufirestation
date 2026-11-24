@@ -1,0 +1,2596 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>土庫救災大作戰</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap">
+<style>
+/* 版面：全螢幕俯視地圖；左上小地圖、右上計時與車體、左下方向、右下油門煞車鳴笛。單一夜間調度台風格 */
+:root{
+  --bg:#0e151d; --panel:#16212c; --ink:#f2f5f9; --muted:#9db0c4; --line:#2c3b4c;
+  --fire:#ff5a2c; --amber:#ffb41f; --ok:#4cc38a; --bad:#ff6b5e;
+  --btn:rgba(16,24,34,.74); --btn-line:rgba(255,255,255,.26);
+  --font:'Noto Sans TC','PingFang TC','Microsoft JhengHei',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--font);overscroll-behavior:none;-webkit-user-select:none;user-select:none}
+#app{position:relative;width:100%;height:100%;overflow:hidden;background:var(--bg)}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#mm{position:absolute;left:10px;top:10px;width:120px;height:86px;border:2px solid var(--btn-line);border-radius:8px;background:#1a2430;opacity:.92}
+#hud{position:absolute;right:10px;top:10px;display:grid;gap:6px;justify-items:end;text-align:right}
+#timer{font-size:2rem;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;text-shadow:0 2px 6px rgba(0,0,0,.6)}
+#timer.low{color:var(--bad)}
+#dispatch{font-size:.8rem;color:var(--muted);text-shadow:0 1px 4px rgba(0,0,0,.7)}
+.hp{width:104px;height:10px;border-radius:5px;background:rgba(0,0,0,.45);border:1px solid var(--btn-line);overflow:hidden}
+.hp i{display:block;height:100%;width:100%;background:var(--ok);transition:width .15s,background .2s}
+.hplabel{font-size:.72rem;color:var(--muted);text-shadow:0 1px 4px rgba(0,0,0,.7)}
+#pauseBtn{pointer-events:auto;font:inherit;font-size:.8rem;color:var(--ink);background:var(--btn);border:1.5px solid var(--btn-line);border-radius:8px;padding:6px 12px;min-height:34px}
+#toast{position:absolute;left:50%;top:max(150px,24%);transform:translateX(-50%) translateY(-6px);max-width:min(86%,420px);text-align:center;background:rgba(10,16,24,.88);border:1.5px solid var(--btn-line);border-radius:12px;padding:9px 14px;font-weight:700;font-size:.95rem;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%)}
+#toast.bad{border-color:var(--bad)}#toast.warn{border-color:var(--amber)}
+#ctl{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;align-items:flex-end;padding:0 max(12px,env(safe-area-inset-right,0px)) 14px max(12px,env(safe-area-inset-left,0px));pointer-events:none}
+.grp{display:flex;gap:8px;align-items:flex-end}
+.pad{pointer-events:auto;touch-action:none;font:inherit;font-weight:900;color:var(--ink);background:var(--btn);border:2px solid var(--btn-line);border-radius:18px;width:70px;height:70px;display:grid;place-items:center;font-size:1.05rem;padding:0;line-height:1.1}
+.pad small{display:block;font-size:.7rem;font-weight:500;color:var(--muted)}
+.pad.big{width:86px;height:86px;border-color:var(--ok)}
+.pad.brk{border-color:var(--bad)}
+.pad.on{background:rgba(255,255,255,.28)}
+.pad.arr{font-size:1.7rem}
+.col{display:grid;gap:8px;justify-items:end}
+#honk{width:56px;height:56px;border-radius:50%;font-size:.8rem;border-color:var(--amber)}
+.ov{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:rgba(6,10,16,.72);z-index:30;overflow-y:auto}
+.ov[hidden]{display:none}
+.sheet{width:min(440px,100%);background:var(--panel);border:1.5px solid var(--line);border-radius:16px;padding:18px;display:grid;gap:12px;max-height:100%;overflow-y:auto;-webkit-user-select:none;user-select:none}
+.sheet h1{margin:0;font-size:1.6rem;line-height:1.2;font-weight:900;letter-spacing:.02em;text-wrap:balance}
+.sheet h2{margin:0;font-size:1.25rem;line-height:1.25;font-weight:900;text-wrap:balance}
+.sheet p{margin:0;color:var(--muted)}
+.sheet .sub{color:var(--amber);font-weight:700;font-size:.85rem;letter-spacing:.04em}
+.sheet ul{margin:0;padding-left:1.1em;color:var(--muted);display:grid;gap:4px}
+.sheet b{color:var(--ink)}
+.stats{display:grid;grid-template-columns:1fr auto;gap:4px 12px;font-size:.92rem;border-top:1px solid var(--line);padding-top:10px;font-variant-numeric:tabular-nums}
+.stats span:nth-child(odd){color:var(--muted)}.stats span:nth-child(even){text-align:right;font-weight:700}
+.stars{font-size:1.6rem;letter-spacing:.12em;color:var(--amber);margin:0}
+.lesson{background:rgba(255,90,44,.1);border:1.5px solid rgba(255,90,44,.5);border-radius:10px;padding:10px 12px;color:var(--ink)!important;font-size:.92rem}
+.lanes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.lc{display:grid;gap:4px;align-content:start;font-size:.8rem;line-height:1.35}.lc b{font-size:.88rem}.lc span{color:var(--muted)}.lsv svg{width:100%;height:auto;display:block}
+.pick{display:grid;gap:6px}.pick button{display:flex;align-items:center;gap:10px;text-align:left;min-height:44px}.pick i{font-style:normal;font-weight:900;background:var(--fire);color:#1b0a04;border-radius:8px;min-width:26px;text-align:center}
+.pick button.sel{border-color:var(--ok);background:rgba(76,195,138,.16)}.pick button.sel::after{content:"✓";margin-left:auto;color:var(--ok);font-weight:900}
+.callbox{display:grid;gap:6px;margin:8px 0}.cl{font-size:.88rem;line-height:1.45;padding:7px 10px;border-radius:10px;max-width:92%}.cl.d{background:#223244;border:1px solid #2f465c}.cl.d.now{border-color:var(--fire);font-weight:700}.cl.u{background:rgba(76,195,138,.15);border:1px solid rgba(76,195,138,.4);justify-self:end}.rule{display:grid;gap:2px;padding:8px 10px;border-radius:10px;background:rgba(255,122,26,.1);border:1px solid rgba(255,122,26,.35);font-size:.88rem;line-height:1.5}.rule b:first-child{font-size:1rem;color:var(--fire)}
+.btns{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.sheet button{font:inherit;font-weight:700;border-radius:12px;min-height:48px;padding:10px 14px;border:2px solid var(--line);background:transparent;color:var(--ink)}
+.sheet button.go{background:var(--fire);border-color:var(--fire);color:#1b0a04;font-size:1.02rem}
+button:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+#snd{position:static;font:inherit;font-size:.72rem;color:var(--muted);background:var(--btn);border:1.5px solid var(--btn-line);border-radius:8px;padding:4px 8px;min-height:30px}
+@media (max-width:360px){.pad{width:62px;height:62px}.pad.big{width:78px;height:78px}}
+@media (orientation:landscape) and (max-height:480px){.pad{width:60px;height:60px}.pad.big{width:72px;height:72px}#ctl{padding-bottom:8px}}
+/* 橫式：手機橫拿或平板（寬大於高） */
+@media (orientation:landscape) and (max-height:560px){
+  #hud{gap:4px}#timer{font-size:1.6rem}
+  #bars{grid-template-columns:auto auto;gap:3px 12px;justify-items:end}
+  #bars .br[hidden]{display:none}
+  #toast{top:56px;max-width:min(60%,520px)}
+  #step{max-width:calc(100% - 330px);font-size:.8rem}
+  .sheet{width:min(760px,100%);padding:14px 18px;gap:8px}
+  .sheet h1{font-size:1.35rem}.sheet h2{font-size:1.1rem}
+  .ov{padding:8px 12px}
+  .pick{grid-template-columns:1fr 1fr}.pick button{min-height:40px;padding:6px 12px}
+  .sheet button{min-height:42px}
+  .callbox{margin:2px 0}.callbox>.cl:nth-last-child(n+4){display:none}.cl{max-width:80%;padding:5px 10px}
+  .lanes{gap:12px}.lsv svg{max-height:92px}
+}
+@media (orientation:landscape) and (min-height:561px){#step{max-width:calc(100% - 330px)}}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+#step{position:absolute;left:10px;top:102px;max-width:calc(100% - 132px);background:var(--btn);border:1.5px solid var(--btn-line);border-radius:10px;padding:4px 9px;font-size:.76rem;line-height:1.35;font-weight:700;pointer-events:none}
+#bars{display:grid;gap:3px;justify-items:end}
+.br{display:flex;align-items:center;gap:5px;font-size:.68rem;color:var(--muted);text-shadow:0 1px 3px #000}
+.br[hidden]{display:none}
+.hp{width:84px;height:8px}
+#snd,#pauseBtn{font:inherit;font-size:.78rem;color:var(--ink);background:var(--btn);border:1.5px solid var(--btn-line);border-radius:8px;padding:5px 10px;min-height:32px;pointer-events:auto}
+body.pm #honk{visibility:hidden}
+body.quake #hud,body.quake #mm,body.quake #step,body.quake #ctl{display:none}
+#qalert{position:absolute;z-index:25;left:10px;right:10px;top:max(10px,env(safe-area-inset-top,0px));max-width:520px;margin:0 auto;display:flex;gap:10px;align-items:flex-start;background:rgba(244,244,247,.97);color:#16181c;border-radius:18px;padding:10px 12px;box-shadow:0 8px 28px rgba(0,0,0,.5);transform:translateY(-170%);transition:transform .35s;pointer-events:none;font-size:.8rem;line-height:1.4}
+#qalert.show{transform:none}
+#qalert .qh{display:flex;justify-content:space-between;gap:8px;font-size:.88rem}#qalert .qh span{color:#666;font-size:.72rem}
+#qalert .qs{margin-top:4px;color:#8a1f12;font-weight:700;font-size:.72rem}
+#qpanel{position:absolute;z-index:22;left:50%;transform:translateX(-50%);bottom:10px;width:min(460px,calc(100% - 20px));max-height:64%}
+#qpanel svg{width:100%;height:auto;max-height:92px;background:#10161e;border-radius:10px;display:block}
+@media (orientation:landscape) and (max-height:560px){#qpanel{left:auto;right:10px;transform:none;width:min(400px,48%);bottom:8px;max-height:94%}#qpanel svg{max-height:56px}#qpanel{gap:6px;padding:12px 14px}#qpanel .lesson{padding:6px 10px;font-size:.8rem}#qpanel h2{font-size:1.02rem}#qalert{max-width:46%;margin:0;right:auto}}
+</style>
+<div id="app">
+  <canvas id="cv" aria-label="土庫鎮示意地圖，消防車與救護車在街道上行駛"></canvas>
+  <canvas id="mm" width="240" height="172"></canvas>
+    <div id="hud">
+    <div id="dispatch">派遣 1／3</div>
+    <div id="timer">0:55</div>
+    <div id="bars">
+      <div class="br" id="rWind"><span id="wa" style="display:inline-block;color:var(--amber)">➤</span><span id="wt"></span></div>
+      <div class="br" id="rLost2"><span id="rLost">延燒 0／5</span></div>
+      <div class="br" id="rTank"><span>水箱</span><div class="hp"><i style="background:#4aa3ff"></i></div></div>
+      <div class="br" id="rFire"><span>火勢</span><div class="hp"><i style="background:var(--fire)"></i></div></div>
+      <div class="br" id="rPat"><span>傷患</span><div class="hp"><i style="background:#ff6b8a"></i></div></div>
+      <div class="br" id="rHp"><span>車體</span><div class="hp"><i style="background:var(--ok)"></i></div></div>
+    </div>
+    <div style="display:flex;gap:6px"><button type="button" id="snd" class="mini">音效</button><button type="button" id="pauseBtn">暫停</button></div>
+  </div>
+  <div id="step"></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <div id="ctl">
+    <div class="grp">
+      <button type="button" class="pad arr" id="bL" aria-label="左轉">◀</button>
+      <button type="button" class="pad arr" id="bR" aria-label="右轉">▶</button>
+    </div>
+    <div class="col">
+      <button type="button" class="pad" id="honk">鳴笛</button>
+      <div class="grp">
+        <button type="button" class="pad brk" id="bBrk">煞車<small>倒車</small></button>
+        <button type="button" class="pad big" id="bGas">油門</button>
+      </div>
+    </div>
+  </div>
+  <div id="qalert" aria-live="assertive"><svg viewBox="0 0 24 24" width="34" height="34" style="flex:none"><path d="M12 2 L23 21 H1 Z" fill="#ffc83d"/><rect x="11" y="9" width="2" height="6" fill="#222"/><circle cx="12" cy="17.5" r="1.2" fill="#222"/></svg><div><div class="qh"><b>國家級警報（遊戲模擬）</b><span>現在</span></div><div class="qt">[地震速報 Earthquake Alert]【模擬演練】土庫地區發生顯著有感地震，慎防強烈搖晃，就近避難「趴下、掩護、穩住」。Felt earthquake alert. Keep calm and seek cover nearby.</div><div class="qs">※ 這是遊戲內的模擬訊息，不是真實警報</div></div></div><div id="qpanel" class="sheet" hidden></div>
+  <div class="ov" id="ov"><div class="sheet" id="sheet"></div></div>
+</div>
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const K=8;                            /* 截圖 1px = 遊戲 8px */
+const WW=Math.round(1207*K),WH=Math.round(860*K);
+const P=(x,y)=>[x*K,y*K];
+function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+/* ---------- 道路（座標＝Google 地圖截圖像素，示意描繪） ---------- */
+const RD={};
+function segNear(px,py,a,b){
+  const dx=b[0]-a[0],dy=b[1]-a[1],l2=dx*dx+dy*dy;
+  let t=l2?((px-a[0])*dx+(py-a[1])*dy)/l2:0;t=clamp(t,0,1);
+  return[a[0]+dx*t,a[1]+dy*t,t];
+}
+function nearOnPoly(pts,x,y){
+  let best=null,bd=1e18;
+  for(let i=0;i<pts.length-1;i++){
+    const q=segNear(x,y,pts[i],pts[i+1]),d=(q[0]-x)**2+(q[1]-y)**2;
+    if(d<bd){bd=d;best={x:q[0],y:q[1],i,t:q[2],d:Math.sqrt(d)};}
+  }
+  return best;
+}
+const S=(n,x,y)=>{const q=nearOnPoly(RD[n].pts,x*K,y*K);return[q.x,q.y];};
+function road(name,w,pts,kind){w=Math.round(w*1.12);RD[name]={name,w,kind,pts,len:0,cum:[0]};
+  for(let i=1;i<pts.length;i++){RD[name].cum.push(RD[name].cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));}
+  RD[name].len=RD[name].cum[pts.length-1];}
+road('145',80,[P(742,118),P(747,175),P(760,230),P(770,310),P(773,380),P(775,460),P(772,500),P(762,545),P(750,590),P(725,655),P(670,680),P(605,700),P(530,735),P(445,760),P(380,787),P(300,800),P(200,806),P(120,800),P(60,815),P(0,845)],'main');
+road('158',80,[P(480,35),P(505,62),P(530,95),P(580,138),P(615,150),P(660,136),P(705,122),P(742,118),P(860,95),P(950,85),P(1060,67),P(1180,45)],'main');
+road('圓環線',72,[P(262,655),P(245,705),P(222,745),S('145',203,803)],'main');
+road('中正路',64,[S('158',590,143),P(540,185),P(478,232),P(446,278),P(428,318),P(385,372),P(330,430),P(285,480),P(245,525),P(218,570),P(212,610),P(256,636)],'st');
+road('中山路',64,[S('158',628,152),P(600,178),P(560,220),P(525,268),P(490,320),P(452,372),P(410,430),P(362,497),P(318,552),P(290,590),P(268,628)],'st');
+road('文化路',64,[S('158',520,105),P(505,125),P(470,170),P(430,215),P(395,255),P(350,295),P(313,335),P(280,380),P(245,430),P(215,480),P(195,530),P(190,575),P(205,612),P(256,636)],'st');
+road('修德街',56,[S('文化路',380,268),S('中正路',450,272),S('中山路',520,262)],'st');
+road('大同路',64,[S('文化路',318,338),S('中正路',428,340),S('中山路',475,346),P(560,352),P(650,352),P(745,352),S('145',773,350)],'st');
+road('仁美街',64,[S('中山路',330,543),P(380,543),P(450,545),P(540,540),P(620,532),P(690,524),P(725,538),S('145',760,548)],'st');
+road('成功路E',64,[S('145',756,572),P(800,585),P(850,600),P(910,625),P(960,640),P(1060,665),P(1180,695)],'st');
+road('圓路35巷',56,[S('158',900,90),P(902,160),P(900,230),P(895,300),P(890,360),P(878,415),P(865,432)],'st');
+road('越港路',56,[S('成功路E',826,592),P(835,545),P(843,500),P(852,455),S('圓路35巷',866,430)],'st');
+road('醫院路',60,[S('145',773,345),P(800,332),P(850,314),S('圓路35巷',898,302)],'st');
+road('校路',56,[S('圓路35巷',900,282),P(960,262),P(1010,243),P(1075,212)],'st');
+road('永年路',56,[S('158',955,88),P(985,125),P(1020,175),S('校路',1075,212)],'st');
+road('可可路',56,[S('圓路35巷',866,432),P(910,432),P(950,428),P(985,425)],'st');
+road('中央路',60,[S('145',203,803),P(165,765),P(135,730),P(110,700),P(125,672),P(165,655),P(215,650),P(258,643)],'st');
+function atRoad(name,x,y){const q=nearOnPoly(RD[name].pts,x*K,y*K);const p=RD[name].pts;
+  const a=Math.atan2(p[q.i+1][1]-p[q.i][1],p[q.i+1][0]-p[q.i][0]);
+  return{x:q.x,y:q.y,a,i:q.i,t:q.t,road:name,s:RD[name].cum[q.i]+q.t*(RD[name].cum[q.i+1]-RD[name].cum[q.i])};}
+/* 沿路徑取點 */
+function pointAt(r,s){
+  const R=RD[r],p=R.pts;s=clamp(s,0,R.len);
+  let i=1;while(i<p.length-1&&R.cum[i]<s)i++;
+  const a=p[i-1],b=p[i],l=R.cum[i]-R.cum[i-1]||1,t=(s-R.cum[i-1])/l;
+  return{x:a[0]+(b[0]-a[0])*t,y:a[1]+(b[1]-a[1])*t,a:Math.atan2(b[1]-a[1],b[0]-a[0])};
+}
+/* ---------- 道路符號距離場（碰撞用，正值＝路面內） ---------- */
+const CELL=8,GW=Math.ceil(WW/CELL),GH=Math.ceil(WH/CELL);
+const SDF=new Float32Array(GW*GH);
+function dt1(f,n,out,v,z){
+  let k=0;v[0]=0;z[0]=-1e20;z[1]=1e20;
+  for(let q=1;q<n;q++){
+    let s=((f[q]+q*q)-(f[v[k]]+v[k]*v[k]))/(2*q-2*v[k]);
+    while(s<=z[k]){k--;s=((f[q]+q*q)-(f[v[k]]+v[k]*v[k]))/(2*q-2*v[k]);}
+    k++;v[k]=q;z[k]=s;z[k+1]=1e20;
+  }
+  k=0;for(let q=0;q<n;q++){while(z[k+1]<q)k++;const dx=q-v[k];out[q]=dx*dx+f[v[k]];}
+}
+function edt(feat,w,h){
+  const f=new Float64Array(w*h);for(let i=0;i<w*h;i++)f[i]=feat[i]?0:1e20;
+  const m=Math.max(w,h),col=new Float64Array(m),out=new Float64Array(m),v=new Int32Array(m),z=new Float64Array(m+1);
+  for(let x=0;x<w;x++){for(let y=0;y<h;y++)col[y]=f[y*w+x];dt1(col,h,out,v,z);for(let y=0;y<h;y++)f[y*w+x]=out[y];}
+  for(let y=0;y<h;y++){for(let x=0;x<w;x++)col[x]=f[y*w+x];dt1(col,w,out,v,z);for(let x=0;x<w;x++)f[y*w+x]=out[x];}
+  return f;
+}
+(function buildSDF(){
+  const cv=document.createElement('canvas');cv.width=GW;cv.height=GH;const g=cv.getContext('2d');
+  g.fillStyle='#000';g.fillRect(0,0,GW,GH);
+  g.strokeStyle='#fff';g.lineJoin='round';g.lineCap='round';
+  for(const n in RD){const r=RD[n];g.lineWidth=r.w/CELL;g.beginPath();
+    r.pts.forEach((p,i)=>i?g.lineTo(p[0]/CELL,p[1]/CELL):g.moveTo(p[0]/CELL,p[1]/CELL));g.stroke();}
+  const d=g.getImageData(0,0,GW,GH).data,N=GW*GH,road=new Uint8Array(N),non=new Uint8Array(N);
+  for(let i=0;i<N;i++){const r=d[i*4]>127?1:0;road[i]=r;non[i]=1-r;}
+  const dIn=edt(non,GW,GH),dOut=edt(road,GW,GH);
+  for(let i=0;i<N;i++)SDF[i]=road[i]?(Math.sqrt(dIn[i])-.5)*CELL:-(Math.sqrt(dOut[i])-.5)*CELL;
+})();
+function sd(x,y){return SDF[clamp(Math.floor(y/CELL),0,GH-1)*GW+clamp(Math.floor(x/CELL),0,GW-1)];}
+function sdGrad(x,y){return[sd(x+CELL,y)-sd(x-CELL,y),sd(x,y+CELL)-sd(x,y-CELL)];}
+/* ---------- 路網圖與導航 ---------- */
+const NODES=[];
+function findNode(x,y,make){
+  for(const n of NODES)if((n.x-x)**2+(n.y-y)**2<16*16)return n;
+  if(!make)return null;const n={x,y,adj:[],id:NODES.length,roads:new Set()};NODES.push(n);return n;
+}
+(function buildGraph(){
+  const names=Object.keys(RD),ins={};names.forEach(n=>{ins[n]=[];RD[n].pts.forEach((p,i)=>ins[n].push({s:RD[n].cum[i],x:p[0],y:p[1]}));});
+  function segInt(a,b,c,d){
+    const r0=b[0]-a[0],r1=b[1]-a[1],s0=d[0]-c[0],s1=d[1]-c[1],den=r0*s1-r1*s0;if(Math.abs(den)<1e-9)return null;
+    const t=((c[0]-a[0])*s1-(c[1]-a[1])*s0)/den,u=((c[0]-a[0])*r1-(c[1]-a[1])*r0)/den,e=.02;
+    if(t<-e||t>1+e||u<-e||u>1+e)return null;return{t:clamp(t,0,1),u:clamp(u,0,1)};
+  }
+  for(let i=0;i<names.length;i++)for(let j=i+1;j<names.length;j++){
+    const A=RD[names[i]],B=RD[names[j]];
+    for(let a=0;a<A.pts.length-1;a++)for(let b=0;b<B.pts.length-1;b++){
+      const h=segInt(A.pts[a],A.pts[a+1],B.pts[b],B.pts[b+1]);if(!h)continue;
+      const x=A.pts[a][0]+(A.pts[a+1][0]-A.pts[a][0])*h.t,y=A.pts[a][1]+(A.pts[a+1][1]-A.pts[a][1])*h.t;
+      ins[names[i]].push({s:A.cum[a]+h.t*(A.cum[a+1]-A.cum[a]),x,y});
+      ins[names[j]].push({s:B.cum[b]+h.u*(B.cum[b+1]-B.cum[b]),x,y});
+    }
+  }
+  names.forEach(n=>{
+    const L=ins[n].sort((a,b)=>a.s-b.s);let prev=null,ps=0;
+    for(const q of L){
+      const nd=findNode(q.x,q.y,true);nd.roads.add(n);
+      if(prev&&prev!==nd){
+        const d=Math.hypot(nd.x-prev.x,nd.y-prev.y);
+        if(!prev.adj.some(e=>e.to===nd.id)){prev.adj.push({to:nd.id,d,road:n,s0:ps,s1:q.s});nd.adj.push({to:prev.id,d,road:n,s0:ps,s1:q.s});}
+      }
+      prev=nd;ps=q.s;
+    }
+  });
+})();
+function nearestNode(x,y){let b=null,bd=1e18;for(const n of NODES){const d=(n.x-x)**2+(n.y-y)**2;if(d<bd){bd=d;b=n;}}return b;}
+function sOn(road,x,y){const q=nearOnPoly(RD[road].pts,x,y),c=RD[road].cum;return c[q.i]+q.t*(c[q.i+1]-c[q.i]);}
+function segNodes(x,y){
+  let best=null,bd=1e18;
+  for(const n in RD){const q=nearOnPoly(RD[n].pts,x,y);if(q.d<bd){bd=q.d;best={n,q};}}
+  const R=RD[best.n],sP=R.cum[best.q.i]+best.q.t*(R.cum[best.q.i+1]-R.cum[best.q.i]);
+  let beh=null,ahd=null;
+  for(const nd of NODES){if(!nd.roads.has(best.n))continue;const sn=sOn(best.n,nd.x,nd.y),d=sn-sP;
+    if(d<=0&&(!beh||d>beh.d))beh={n:nd,d};if(d>=0&&(!ahd||d<ahd.d))ahd={n:nd,d};}
+  return[beh,ahd].filter(Boolean).map(o=>({n:o.n,d:Math.abs(o.d)}));
+}
+function locate(x,y){let best=null,bd=1e18;for(const n in RD){const q=nearOnPoly(RD[n].pts,x,y);if(q.d<bd){bd=q.d;best={n,s:RD[n].cum[q.i]+q.t*(RD[n].cum[q.i+1]-RD[n].cum[q.i])};}}return best;}
+function route(fx,fy,tx,ty,blocked){
+  blocked=blocked||[];
+  {const a=locate(fx,fy),b=locate(tx,ty);
+   if(a.n===b.n){const lo=Math.min(a.s,b.s),hi=Math.max(a.s,b.s);
+     if(!NODES.some(nd=>{if(!nd.roads.has(a.n))return false;const sn=sOn(a.n,nd.x,nd.y);return sn>lo+6&&sn<hi-6;})&&!blocked.some(q=>q.road===a.n&&q.s>lo&&q.s<hi))return[[fx,fy],[tx,ty]];}}
+  const N=NODES.length,dist=new Float64Array(N).fill(1e18),prev=new Int32Array(N).fill(-1),done=new Uint8Array(N);
+  segNodes(fx,fy).forEach(s=>{dist[s.n.id]=Math.min(dist[s.n.id],s.d);});
+  for(let it=0;it<N;it++){
+    let u=-1,bd=1e18;for(let i=0;i<N;i++)if(!done[i]&&dist[i]<bd){bd=dist[i];u=i;}
+    if(u<0)break;done[u]=1;
+    for(const e of NODES[u].adj){
+      if(blocked.some(b=>b.road===e.road&&b.s>=Math.min(e.s0,e.s1)-2&&b.s<=Math.max(e.s0,e.s1)+2))continue;
+      const nd=dist[u]+e.d;if(nd<dist[e.to]){dist[e.to]=nd;prev[e.to]=u;}
+    }
+  }
+  let best=null,bs=1e18;
+  segNodes(tx,ty).forEach(c=>{const t=dist[c.n.id]+c.d;if(t<bs){bs=t;best=c.n;}});
+  if(!best||bs>=1e17)return[[fx,fy],[tx,ty]];
+  const path=[];for(let c=best.id;c>=0;c=prev[c])path.push([NODES[c].x,NODES[c].y]);
+  path.reverse();return[[fx,fy]].concat(path,[[tx,ty]]);
+}
+/* ---------- 紅綠燈 ---------- */
+const LIGHTS=[];
+[[742,118],[773,350],[760,548],[756,572],[428,336],[475,346],[600,150],[900,92],[902,300],[868,432],[450,275],[203,803]].forEach(pp=>{
+  const nd=nearestNode(pp[0]*K,pp[1]*K);if(!nd||nd.roads.size<2)return;
+  if(LIGHTS.some(l=>Math.hypot(l.x-nd.x,l.y-nd.y)<200))return;
+  const list=[...nd.roads].map(n=>{const q=nearOnPoly(RD[n].pts,nd.x,nd.y),p=RD[n].pts;
+    return{name:n,s:RD[n].cum[q.i]+q.t*(RD[n].cum[q.i+1]-RD[n].cum[q.i]),a:Math.atan2(p[q.i+1][1]-p[q.i][1],p[q.i+1][0]-p[q.i][0])};});
+  const a0=list[0].a;
+  list.forEach(l=>{const d=Math.abs(Math.atan2(Math.sin(l.a-a0),Math.cos(l.a-a0)));l.g=(d<Math.PI/4||d>3*Math.PI/4)?0:1;});
+  LIGHTS.push({x:nd.x,y:nd.y,list,off:LIGHTS.length*3.7});
+});
+function lightGreen(L,g,t){const ph=(t+L.off)%16;return g===0?ph<7:(ph>=8&&ph<15);}
+const ROADLIGHTS={};
+LIGHTS.forEach(L=>L.list.forEach(l=>{(ROADLIGHTS[l.name]=ROADLIGHTS[l.name]||[]).push({L,s:l.s,g:l.g});}));
+/* ---------- 地標 ---------- */
+const LM=[
+ {id:'fs',name:'土庫消防隊',type:'fire',c:P(800,128),w:200,h:130},
+ {id:'yn',name:'永年高中',type:'school',c:P(1105,140),w:420,h:300},
+ {id:'tk',name:'土庫國小',type:'school',c:P(258,335),w:280,h:240},
+ {id:'yg',name:'越港國小',type:'school',c:P(790,568),w:220,h:200},
+ {id:'sg',name:'土庫商工',type:'school',c:P(182,612),w:360,h:250},
+ {id:'st',name:'順天宮',type:'temple',c:P(402,316),w:110,h:90},
+ {id:'fh',name:'鳳山寺（位置示意）',type:'temple',c:P(512,198),w:100,h:80},
+ {id:'cc',name:'土庫驛可可莊園',type:'shop',c:P(995,402),w:170,h:120},
+ {id:'po',name:'土庫派出所（位置示意）',type:'police',c:P(815,376),w:110,h:80},
+ {id:'hc',name:'土庫衛生所（位置示意）',type:'clinic',c:P(722,376),w:100,h:80},
+ {id:'hp',name:'醫院（示意）',type:'hospital',c:P(850,297),w:240,h:170},
+ {id:'ky',name:'科盈食品',type:'factory',c:P(578,752),w:230,h:140},
+ {id:'ys',name:'源順芝麻觀光油廠',type:'factory',c:P(772,668),w:130,h:90}
+];
+LM.forEach(l=>{l.x0=l.c[0]-l.w/2;l.y0=l.c[1]-l.h/2;l.x1=l.c[0]+l.w/2;l.y1=l.c[1]+l.h/2;});
+const URB=[P(470,30),P(900,60),P(820,330),P(800,560),P(740,740),P(560,800),P(300,830),P(60,800),P(30,640),P(120,520),P(200,330),P(330,170)];
+function inPoly(x,y,poly){let c=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+  const a=poly[i],b=poly[j];if((a[1]>y)!==(b[1]>y)&&x<(b[0]-a[0])*(y-a[1])/(b[1]-a[1])+a[0])c=!c;}return c;}
+/* ---------- 房屋 ---------- */
+const houses=[],HB=new Map(),HBS=400;
+const RD_FRONT=75;
+(function genHouses(){
+  const r=rng(5),ROOF=['#bdb7ab','#aab0b9','#c7bda8','#a3aca4','#b9aca1','#aaa6b6','#c9c1b5'];
+  function overlaps(h){
+    for(let a=Math.floor((h.x-60)/HBS);a<=Math.floor((h.x+h.w+60)/HBS);a++)for(let b=Math.floor((h.y-60)/HBS);b<=Math.floor((h.y+h.h+60)/HBS);b++){
+      const arr=HB.get(a*1000+b);if(!arr)continue;
+      for(const o of arr)if(h.x<o.x+o.w+3&&h.x+h.w+3>o.x&&h.y<o.y+o.h+3&&h.y+h.h+3>o.y)return true;}
+    return false;
+  }
+  for(const n in RD){
+    const rd=RD[n];
+    for(let i=0;i<rd.pts.length-1;i++){
+      const a=rd.pts[i],b=rd.pts[i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1]),ux=(b[0]-a[0])/l,uy=(b[1]-a[1])/l;
+      for(let d=20;d<l-20;d+=40+r()*14){
+        for(const side of[-1,1]){
+          const w=38+r()*22,h=38+r()*22,off=rd.w/2+10+Math.max(w,h)/2;
+          const cx=a[0]+ux*d-uy*off*side,cy=a[1]+uy*d+ux*off*side;
+          if(!inPoly(cx,cy,URB))continue;
+          const H={x:cx-w/2,y:cy-h/2,w,h,col:ROOF[Math.floor(r()*ROOF.length)],tank:r()<.5,ac:r()<.6};
+          if(sd(H.x,H.y)>-8||sd(H.x+w,H.y)>-8||sd(H.x,H.y+h)>-8||sd(H.x+w,H.y+h)>-8||sd(cx,cy)>-8)continue;
+          if(LM.some(L=>H.x<L.x1+6&&H.x+H.w>L.x0-6&&H.y<L.y1+6&&H.y+H.h>L.y0-6))continue;
+          if(overlaps(H))continue;
+          houses.push(H);
+          const k=Math.floor(cx/HBS)*1000+Math.floor(cy/HBS);(HB.get(k)||HB.set(k,[]).get(k)).push(H);
+        }
+      }
+    }
+  }
+  /* 第二排：往街廓內補房子，讓街區更密 */
+  const r2=rng(11);
+  for(const n in RD){
+    const rd=RD[n];
+    for(let i=0;i<rd.pts.length-1;i++){
+      const a=rd.pts[i],b=rd.pts[i+1],l=Math.hypot(b[0]-a[0],b[1]-a[1]),ux=(b[0]-a[0])/l,uy=(b[1]-a[1])/l;
+      for(let d=30;d<l-30;d+=52+r2()*20){
+        for(const side of[-1,1]){
+          const w=40+r2()*26,h=40+r2()*26,off=rd.w/2+10+78+Math.max(w,h)/2;
+          const cx=a[0]+ux*d-uy*off*side,cy=a[1]+uy*d+ux*off*side;
+          if(!inPoly(cx,cy,URB))continue;
+          const H={x:cx-w/2,y:cy-h/2,w,h,col:ROOF[Math.floor(r2()*ROOF.length)],tank:r2()<.5,ac:r2()<.5};
+          if(sd(H.x,H.y)>-8||sd(H.x+w,H.y)>-8||sd(H.x,H.y+h)>-8||sd(H.x+w,H.y+h)>-8||sd(cx,cy)>-8)continue;
+          if(LM.some(L=>H.x<L.x1+6&&H.x+H.w>L.x0-6&&H.y<L.y1+6&&H.y+H.h>L.y0-6))continue;
+          if(overlaps(H))continue;
+          houses.push(H);
+          const k=Math.floor(cx/HBS)*1000+Math.floor(cy/HBS);(HB.get(k)||HB.set(k,[]).get(k)).push(H);
+        }
+      }
+    }
+  }
+  /* 少數高樓，天際線有高低 */
+  const r3=rng(23);houses.forEach(h=>{if(r3()<.13)h.ht=52+Math.floor(r3()*26);});
+  /* 店家招牌：面向最近的馬路，一般店家約三成，加油站少數 */
+  const r4=rng(31),TYPES=['store','store','laundry','food','food','drink','drink'];
+  const front=[];
+  houses.forEach(h=>{
+    const cx=h.x+h.w/2,cy=h.y+h.h/2;let bd=1e9,bq=null;
+    for(const n in RD){const q=nearOnPoly(RD[n].pts,cx,cy);if(q.d<bd){bd=q.d;bq=q;}}
+    if(!bq||bd>RD_FRONT)return;
+    const L=Math.hypot(bq.x-cx,bq.y-cy)||1;h.fa={x:(bq.x-cx)/L,y:(bq.y-cy)/L};front.push(h);
+  });
+  front.forEach(h=>{if(r4()<.3)h.shop=TYPES[Math.floor(r4()*TYPES.length)];});
+  const big=front.filter(h=>h.w>=52&&h.h>=52).sort((p,q)=>p.x-q.x);
+  [.18,.5,.82].forEach(f=>{const h=big[Math.floor(big.length*f)];if(h)h.shop='gas';});
+})();
+/* ---------- 違停車（固定障礙） ---------- */
+const ILL=[];
+(function(){
+  const r=rng(23),COL=['#e3e6ea','#2f3b4b','#b23a3a','#e2c35a','#4b7a9e','#6e8a5c','#7b5b8c'];
+  for(const n in RD){
+    const R=RD[n];if(R.kind!=='st')continue;
+    const cnt=Math.max(1,Math.floor(R.len/1500));
+    for(let k=0;k<cnt;k++){
+      for(let tries=0;tries<12;tries++){
+        const s=60+r()*(R.len-120),pt=pointAt(n,s);
+        if(NODES.some(nd=>Math.hypot(nd.x-pt.x,nd.y-pt.y)<90))continue;
+        const side=r()<.5?1:-1,off=R.w/2-8;
+        const x=pt.x-Math.sin(pt.a)*off*side,y=pt.y+Math.cos(pt.a)*off*side;
+        if(ILL.some(c=>Math.hypot(c.x-x,c.y-y)<180))continue;
+        ILL.push({x,y,a:pt.a,col:COL[Math.floor(r()*COL.length)],road:n});break;
+      }
+    }
+  }
+})();
+window.__m={sOn,RD,LM,houses,HB,HBS,WW,WH,K,P,S,atRoad,pointAt,sd,sdGrad,route,NODES,LIGHTS,lightGreen,ROADLIGHTS,ILL,URB,nearOnPoly,clamp,rng,$};
+})();
+(()=>{
+'use strict';
+const {RD,LM,houses,HB,HBS,WW,WH,K,P,S,atRoad,pointAt,sd,sdGrad,route,sOn,NODES,LIGHTS,lightGreen,ROADLIGHTS,ILL,URB,nearOnPoly,clamp,rng}=window.__m;
+const $=s=>document.querySelector(s);
+const cv=$('#cv'),ctx=cv.getContext('2d'),mm=$('#mm'),mx=mm.getContext('2d');
+const FONT="'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif";
+const M_PER_PX=1/7;
+let vw=0,vh=0,dpr=1;
+function resize(){const r=cv.getBoundingClientRect();dpr=Math.min(2,window.devicePixelRatio||1);vw=r.width;vh=r.height;cv.width=Math.round(vw*dpr);cv.height=Math.round(vh*dpr);}
+new ResizeObserver(resize).observe(cv);
+const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const angd=(a,b)=>Math.atan2(Math.sin(a-b),Math.cos(a-b));
+const rnd=rng(77);
+let rr0=Math.random;
+/* ---------- 車種 ---------- */
+const VT={
+  truck:{name:'水箱車',len:58,wid:23,wb:36,vmax:150,acc:115,brk:230,rev:80,maxst:.58,circ:[-19,0,19],r:11.5,code:'土庫11'},
+  tanker:{name:'水庫車',len:62,wid:24,wb:38,vmax:145,acc:105,brk:220,rev:75,maxst:.55,circ:[-20,0,20],r:12,code:'土庫61'},
+  amb:{name:'救護車',len:46,wid:20,wb:30,vmax:165,acc:130,brk:240,rev:85,maxst:.62,circ:[-14,0,14],r:10,code:'土庫91'},
+  ladder:{name:'雲梯車',len:76,wid:25,wb:46,vmax:135,acc:95,brk:210,rev:70,maxst:.5,circ:[-26,-9,9,26],r:12.5,code:'土庫31'}
+};
+/* ---------- 任務 ---------- */
+const MIS=[
+ {name:'文化路住宅火警',res:2,radio:[{t:3,txt:'土庫國小旁民宅火警，開警示燈鳴笛前往。'}],road:'文化路',at:[352,296],hyd:-230,vic:0,blk:null,traffic:8,par:200,wind:.6,maxLost:5,
+  brief:'土庫國小附近有民宅起火。水箱車先到場出水，水庫車再去佔消防栓、拉水帶接力供水，最後操控消防員射水滅火。注意風向，別讓火燒到鄰棟。'},
+ {name:'大同路店面火警　有人受傷',res:2,radio:[{t:3,txt:'店面火警，有民眾受傷，請盡速到場。'},{t:9,block:1,txt:'大同路前方事故封路，請改道！'}],road:'大同路',at:[560,352],hyd:230,vic:150,blk:null,traffic:12,par:300,wind:-2.4,maxLost:5,
+  brief:'大同路店面起火，有民眾受傷。先處理水源、射水控制火勢，再換救護車送醫。路上有紅綠燈和車流，不讓的車請鳴笛。'},
+ {name:'仁美街火警　違停堵路',radio:[{t:3,txt:'現場風勢很大，注意火勢往下風處延燒。'}],road:'仁美街',at:[450,545],hyd:200,vic:-130,blk:{road:'仁美街',at:[640,531]},traffic:14,par:400,wind:3.0,maxLost:5,
+  brief:'仁美街民宅火警，有人受傷。主要路線被違停車堵住，導航會在你看到時改道。'},
+ {name:'仁美街高樓火警（夜雨）',night:true,rain:true,res:3,radio:[{t:2,txt:'夜間下大雨、路面濕滑，請減速慢行，煞車距離會變長。'},{t:5,txt:'高樓層起火，雲梯車「土庫31」已備便，請水箱車先建立水線。'},{t:10,block:1,txt:'仁美街前方施工封路，請改道！'}],road:'仁美街',at:[560,541],hyd:-230,vic:0,blk:null,traffic:12,par:420,wind:-.5,maxLost:5,tower:true,ladder:true,
+  brief:'高樓大廈高樓層起火！水箱車的水柱打不到高樓層，必須再派雲梯車「土庫31」架梯從上方射水；你要用地面水線保護鄰棟，防止飛火延燒。'},
+ {name:'大同路老街古蹟火警（夜間）',night:true,res:4,radio:[{t:3,txt:'連棟木造古蹟起火，已請求高鐵分隊支援，注意延燒。'}],road:'大同路',at:[650,352],hyd:-230,vic:0,blk:null,traffic:12,par:420,wind:-.2,maxLost:5,row:true,hsr:true,
+  brief:'連棟木造古蹟建築起火，木造連棟延燒極快！土庫車組到場後，「高鐵分隊」車組會自動趕來支援。你要用水線和射水先保護鄰棟。'},
+ {name:'中正路強震　建築倒塌（有人受困）',quake:true,vic:95,trap:3,radio:[{t:2,txt:'強震後建築物倒塌，有民眾受困，土庫11、土庫91出動；注意餘震與瓦斯外洩。'}],road:'中正路',at:[330,430],hyd:-230,blk:null,traffic:8,par:330,wind:0,maxLost:99,
+  brief:'強震後，中正路一棟建築物倒塌，有三位民眾被壓在瓦礫旁。土庫11 先趕到現場，你操作消防員靠近受困民眾（紅色驚嘆號）、停留一會兒把人救出，帶到粉紅色的傷患集結區；注意餘震落石。接著換土庫91 救護車，把傷患送到醫院。'},
+ {name:'仁美街一氧化碳中毒（寒流夜晚）',co:true,night:true,vic:120,radio:[{t:2,txt:'寒流來襲，民宅疑似一氧化碳中毒，有人昏迷。土庫11、土庫91出動，人員配戴空氣呼吸器，先檢測再通風。'}],road:'仁美街',at:[620,532],hyd:-230,blk:null,traffic:8,par:330,wind:0,maxLost:99,
+  brief:'寒流夜晚，仁美街一戶人家緊閉門窗洗熱水澡，兩人在家中昏迷。土庫11 先到場，你操作消防員：先在門口檢測一氧化碳、開兩扇窗通風、關掉熱水器，再把昏迷的民眾救到戶外粉紅集結區。接著換土庫91 救護車送醫院。'}
+ ,{name:'大同路民眾叫救護車　真的需要嗎？',ems:true,vic:0,radio:[{t:2,txt:'民眾通報身體不適，需要救護車。土庫91 出動，開警示燈鳴笛前往。'}],road:'大同路',at:[560,352],hyd:-230,blk:null,traffic:8,par:300,wind:0,maxLost:99,
+  brief:'有民眾打 119 叫救護車。你開土庫91 到場，先評估傷病狀況，再決定如何處理。接著派遣中心又接獲仁美街的真正緊急案件，要趕去救人送醫。'}
+];
+/* ---------- 全域狀態 ---------- */
+const G={callMi:-1,callBonus:0,mode:'menu',mi:0,res:[],s:null,t:0,ph:'d1',honkCd:0};
+const inp={l:0,r:0,gas:0,brk:0,spray:0};
+let best=0;try{best=+localStorage.getItem('tukuBest')||0;}catch(e){}
+let RES=[],SAFE=null,haz=null,VICS=[];
+let supply=[],neigh=[],cbs=[],npcs=[],lad=null,wind={a:0};
+let V=null,PP=null,park=[],cars=[],blk=[],statC=[],circs=[],fx=[],ff=[],F=null,PT=null,trail=[],trailLen=0,goalZ=null,lay=null,load=null,hyd=null,discovered=[],gps=null,gpsT=0;
+const cam={x:0,y:0,z:1};let shake=0,tnow=0;
+const HOSE_MAX=760;
+const ROADX={};
+for(const n in RD)ROADX[n]=[];
+NODES.forEach(nd=>nd.roads.forEach(r=>ROADX[r].push({s:sOn(r,nd.x,nd.y),nd})));
+const STATION=S('158',800,107);
+/* ---------- 音效 ---------- */
+let ac=null,sOsc=null,sGain=null,muted=false;
+function audioInit(){
+  if(ac)return;
+  try{ac=new(window.AudioContext||window.webkitAudioContext)();sOsc=ac.createOscillator();sOsc.type='sawtooth';sGain=ac.createGain();sGain.gain.value=0;sOsc.connect(sGain);sGain.connect(ac.destination);sOsc.start();}catch(e){ac=null;}
+}
+function beep(f,d,type,vol){
+  if(!ac||muted)return;
+  try{const o=ac.createOscillator(),g=ac.createGain();o.type=type||'square';o.frequency.value=f;g.gain.setValueAtTime(vol||.07,ac.currentTime);g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+d);}catch(e){}
+}
+function buzz(ms){try{if(navigator.vibrate)navigator.vibrate(ms);}catch(e){}}
+function sirenUpdate(){
+  if(!ac||!sGain)return;
+  const on=G.mode==='play'&&!muted&&V;
+  sGain.gain.setTargetAtTime(on?.016:0,ac.currentTime,.08);
+  sOsc.frequency.setTargetAtTime(V&&V.type==='amb'?(Math.sin(tnow*5)>0?640:900):760+150*Math.sin(tnow*9),ac.currentTime,.03);
+}
+let toastT=0;
+function toast(msg,kind,ms){const t=$('#toast');t.textContent=msg;t.className='show '+(kind||'');clearTimeout(toastT);toastT=setTimeout(()=>{t.className='';},ms||2400);}
+/* ---------- 載入任務 ---------- */
+function sideNormal(a){return{x:-Math.sin(a),y:Math.cos(a)};}
+function houseAt(x,y,pad){
+  const k=Math.floor(x/HBS)*1000+Math.floor(y/HBS);
+  for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const arr=HB.get((Math.floor(x/HBS)+a)*1000+Math.floor(y/HBS)+b);if(!arr)continue;
+    for(const h of arr)if(x>h.x-pad&&x<h.x+h.w+pad&&y>h.y-pad&&y<h.y+h.h+pad)return h;}
+  return null;
+}
+function capCircles(x,y,a,hl,r,ref,out){
+  for(const o of[-hl,hl])out.push({x:x+Math.cos(a)*o,y:y+Math.sin(a)*o,r,car:ref});
+}
+function loadMission(i){
+  try{$('#qalert').classList.remove('show');$('#qpanel').hidden=true;document.body.classList.remove('quake');}catch(_){}
+  const M=MIS[i];G.mi=i;
+  const rd=RD[M.road],pt=atRoad(M.road,M.at[0],M.at[1]);
+  const at=ds=>{const p=pointAt(M.road,clamp(pt.s+ds,30,rd.len-30));return p;};
+  G.qc=M.quake&&G.qkDone?1:0;G.qcrack=G.qc;G.qs=0;G.qd=0;VICS=[];
+  houses.forEach(h=>{h.skip=false;h.fs=null;});supply=[];cbs=[];neigh=[];npcs=[];lad=null;wind={a:M.wind||0};
+  const nrm=sideNormal(pt.a);
+  let side=1,hs=null;
+  for(const sd_ of[1,-1]){const h=houseAt(pt.x+nrm.x*sd_*(rd.w/2+26),pt.y+nrm.y*sd_*(rd.w/2+26),10);if(h){side=sd_;hs=h;break;}}
+  const addCB=(x,y,w,h,col,ht,kind)=>{
+    houses.forEach(o=>{if(o.x<x+w+4&&o.x+o.w>x-4&&o.y<y+h+4&&o.y+o.h>y-4)o.skip=true;});
+    const b={x,y,w,h,col,ht,wood:kind==='wood',tower:kind==='tower',cb:1};cbs.push(b);return b;};
+  let main=null;
+  if(M.quake){const off=rd.w/2+16+42,qx=pt.x+nrm.x*side*off,qy=pt.y+nrm.y*side*off;main=addCB(qx-48,qy-42,96,84,'#b8b0a2',70,'house');main.qk=1;main.tr={x:-nrm.x*side,y:-nrm.y*side};}
+  else if(M.co){const off=rd.w/2+16+35,cx=pt.x+nrm.x*side*off,cy=pt.y+nrm.y*side*off;main=addCB(cx-50,cy-35,100,70,'#c9bfae',34,'house');main.co=1;main.tr={x:-nrm.x*side,y:-nrm.y*side};}
+  else if(M.tower){const cx=pt.x+nrm.x*side*(rd.w/2+16+50),cy=pt.y+nrm.y*side*(rd.w/2+16+50);main=addCB(cx-55,cy-50,110,100,'#9aa6b4',120,'tower');}
+  else if(M.row){const w=66,h=54,n=6,x0=pt.x-w*n/2,cy=pt.y+nrm.y*side*(rd.w/2+8+h/2);
+    for(let k=0;k<n;k++)addCB(x0+k*w,cy-h/2,w,h,k%2?'#7d5f40':'#8a6a48',16,'wood');main=cbs[2];}
+  else if(hs)main=hs;
+  else main=addCB(pt.x+nrm.x*side*(rd.w/2+26)-28,pt.y+nrm.y*side*(rd.w/2+26)-25,56,50,'#bdb7ab',22,'house');
+  const mcx=main.x+main.w/2,mcy=main.y+main.h/2;
+  const fire={x:mcx,y:mcy,cx:mcx,cy:mcy,hp:100,heat:0,burning:true,spray:false,conn:false,out:false,house:main,b:main,tall:!!M.tower,ladder:false,main:1};
+  main.fs=fire;F=fire;F.tank=100;
+  if(M.quake||M.co||M.ems){fire.out=true;fire.burning=false;fire.hp=0;fire.conn=true;main.fs=null;}
+  {const cand=[];const R=M.tower?230:175;
+   houses.forEach(h=>{if(h.skip||h===main||h.fs)return;const cx=h.x+h.w/2,cy=h.y+h.h/2,d=Math.hypot(cx-mcx,cy-mcy);if(d<R)cand.push({b:h,d});});
+   cbs.forEach(b=>{if(b!==main)cand.push({b,d:Math.hypot(b.x+b.w/2-mcx,b.y+b.h/2-mcy)});});
+   cand.sort((a,b)=>a.d-b.d);
+   if(!(M.quake||M.co||M.ems))cand.slice(0,14).forEach(c=>{const b=c.b;const f={cx:b.x+b.w/2,cy:b.y+b.h/2,hp:0,heat:0,burning:false,out:false,lost:false,wet:0,b,wood:b.wood};b.fs=f;neigh.push(f);});}
+  const lane=rd.w/4;
+  const g1={x:pt.x+nrm.x*side*lane,y:pt.y+nrm.y*side*lane,r:50,col:'#ffb41f',label:M.ems?'報案地點':'火場位置'};
+  const hp_=at(M.hyd),nh=sideNormal(hp_.a);
+  hyd=(M.quake||M.co||M.ems)?null:{x:hp_.x+nh.x*side*(rd.w/2+7),y:hp_.y+nh.y*side*(rd.w/2+7)};
+  G.co=null;G.ems=null;G.emsDelay=0;G.emsBonus=0;
+  if(M.co){const mkv=ds=>{const vp=at(ds),nv=sideNormal(vp.a);VICS.push({x:vp.x+nv.x*side*(rd.w/2+6),y:vp.y+nv.y*side*(rd.w/2+6),state:'trap',prog:0,ang:0,walk:0});};mkv(-12);mkv(12);coInit(at,side,rd);}
+  if(M.quake)[-40,-6,28].forEach(ds=>{const vp=at(ds),nv=sideNormal(vp.a);VICS.push({x:vp.x+nv.x*side*(rd.w/2+6),y:vp.y+nv.y*side*(rd.w/2+6),state:'trap',prog:0,ang:0,walk:0});});
+  const g2={x:hp_.x+nh.x*side*lane,y:hp_.y+nh.y*side*lane,r:46,col:'#4cc38a',label:'消防栓'};
+  let g3=null;PT=null;
+  if(M.vic){const vp=at(M.vic),nv=sideNormal(vp.a);
+    PT={x:vp.x+nv.x*side*(rd.w/2+10),y:vp.y+nv.y*side*(rd.w/2+10),hp:100,state:'wait',on:false};
+    g3={x:vp.x+nv.x*side*lane,y:vp.y+nv.y*side*lane,r:48,col:'#ff6b8a',label:'傷患'};}
+  const hl=LM.find(l=>l.id==='hp'),hr=S('醫院路',850,314);
+  const g4={x:hr[0],y:hr[1]-14,r:58,col:'#7fd0ff',label:'醫院急診'};
+  let gL=null;if(M.ladder){const lp=at(110),nl=sideNormal(lp.a);gL={x:lp.x+nl.x*side*lane,y:lp.y+nl.y*side*lane,r:54,col:'#b48cff',label:'雲梯車定位'};}
+  G.mhsr=M.hsr?{road:M.road,s:pt.s,side,lane,rd}:null;
+  G.goals={d1:g1,d2:g2,d3:g3,d4:g4,d5:gL};
+  /* 靜態障礙 */
+  statC=[];blk=[];
+  ILL.forEach(c=>capCircles(c.x,c.y,c.a,8,8.5,c,statC));
+  if(M.blk){
+    const bs=atRoad(M.blk.road,M.blk.at[0],M.blk.at[1]);
+    for(const off of[-22,0,22]){const nn=sideNormal(bs.a);const c={x:bs.x+nn.x*off,y:bs.y+nn.y*off,a:bs.a+Math.PI/2,col:['#e3e6ea','#b23a3a','#2f3b4b'][off/22+1],blkr:1};blk.push(c);capCircles(c.x,c.y,c.a,8,8.5,c,statC);}
+    G.blkInfo={road:M.blk.road,s:bs.s,x:bs.x,y:bs.y,found:false};
+  }else G.blkInfo=null;
+  discovered=[];gps=null;gpsT=0;
+  park=[];fx=[];ff=[];PP=null;trail=[];trailLen=0;lay=null;load=null;lad=null;G.hsrMsg=0;
+  G.s={t:0,hits:0,ped:0,honks:0,yielded:0,tArr:null,tank:100,pat:100,driven:0,hitCd:0,tankEmpty:0,noConn:0,redPass:0,lost:0,ffHit:0,ffDodge:0,resHurt:0};
+  G.ph='d1';G.t=0;G.honkCd=0;
+  RES=[];SAFE=null;haz=null;G.hazT=M.quake?10:14;G.hazN=0;G.stun=0;G.radioI=0;G.cones=[];G.kitBonus=0;G.kitWrong=0;
+  spawnVeh(M.ems?'amb':'truck');
+  cars=[];for(let k=0;k<M.traffic;k++)spawnCar(true);
+  camSnap();setModeUI();
+}
+function spawnVeh(type){
+  const g=G.goals[G.ph==='d1'?'d1':G.ph==='d2'?'d2':G.ph==='d3'?'d3':G.ph==='d5'?'d5':'d4']||G.goals.d1;
+  const sp={x:STATION[0],y:STATION[1]};
+  const rt=route(sp.x,sp.y,g.x,g.y,[]);
+  let a=0;for(const p of rt){if(Math.hypot(p[0]-sp.x,p[1]-sp.y)>60){a=Math.atan2(p[1]-sp.y,p[0]-sp.x);break;}}
+  const ta=atRoad('158',800,107).a;a=Math.abs(angd(ta,a))<Math.PI/2?ta:ta+Math.PI;
+  V={type,x:sp.x,y:sp.y,a,v:0,steer:0,hp:100};
+  inp.l=inp.r=inp.gas=inp.brk=0;
+}
+/* ---------- 交通車流 ---------- */
+const CARCOL=['#e3e6ea','#2f3b4b','#b23a3a','#e2c35a','#4b7a9e','#6e8a5c','#7b5b8c','#c98a4a','#555e68'];
+function spawnCar(first){
+  const names=Object.keys(RD);
+  for(let tries=0;tries<60;tries++){
+    const n=names[Math.floor(Math.random()*names.length)],R=RD[n];
+    if(Math.random()*500>R.len/6&&tries<40)continue;
+    const s=40+Math.random()*(R.len-80),p=pointAt(n,s);
+    const ref=V||{x:STATION[0],y:STATION[1]};
+    const d=Math.hypot(p.x-ref.x,p.y-ref.y);
+    if(first?d<500:(d<750||d>1500))continue;
+    if(blk.some(b=>Math.hypot(b.x-p.x,b.y-p.y)<120))continue;
+    if(cars.some(c=>Math.hypot(c.x-p.x,c.y-p.y)<90))continue;
+    if(LIGHTS.some(L=>Math.hypot(L.x-p.x,L.y-p.y)<70))continue;
+    if(F&&Math.hypot(F.x-p.x,F.y-p.y)<330)continue;
+    const c={road:n,s,dir:Math.random()<.5?1:-1,v:0,vmax:42+Math.random()*28,lat:0,x:p.x,y:p.y,a:p.a,col:CARCOL[Math.floor(Math.random()*CARCOL.length)],stub:Math.random()<.38,hk:0,stall:0,yl:false,bub:0,lanepref:0};
+    c.lat=(R.kind==='main'?R.w/4:12);
+    if(first){cars.push(c);}else{if(cars.length<MIS[G.mi].traffic)cars.push(c);else return c;}
+    return c;
+  }
+  return null;
+}
+function carLane(c){return RD[c.road].kind==='main'?RD[c.road].w/4:12;}
+function updateCars(dt){
+  const act=PPmode()?PP:V;
+  const person=PPmode();
+  for(let i=0;i<cars.length;i++){
+    const c=cars[i],R=RD[c.road];
+    c.bub=Math.max(0,c.bub-dt);c.stall=Math.max(0,c.stall-dt);
+    let vt=c.vmax;
+    /* 紅燈 */
+    const rl=ROADLIGHTS[c.road];
+    if(rl)for(const e of rl){
+      const ahead=(e.s-c.s)*c.dir;
+      if(ahead>12&&ahead<120&&!lightGreen(e.L,e.g,G.t)){vt=Math.min(vt,Math.sqrt(2*95*Math.max(0,ahead-14)));}
+    }
+    /* 前方障礙（車、玩家、人、停放的消防車） */
+    const ca=Math.cos(c.a),sa=Math.sin(c.a);
+    const chk=(ox,oy,lw)=>{
+      const dx=ox-c.x,dy=oy-c.y;if(dx>140||dx<-140||dy>140||dy<-140)return;
+      const fwd=dx*ca+dy*sa,lat=-dx*sa+dy*ca;
+      const gap=34+c.v*.7;
+      if(fwd>0&&fwd<gap&&Math.abs(lat)<lw){vt=Math.min(vt,fwd<26?0:(fwd-26)*1.7);}
+    };
+    for(let j=0;j<cars.length;j++)if(j!==i)chk(cars[j].x,cars[j].y,15);
+    if(V)chk(V.x,V.y,17);
+    if(PP)chk(PP.x,PP.y,14);
+    for(const pk of park)chk(pk.x,pk.y,17);
+    for(const u of npcs)chk(u.x,u.y,17);
+    for(const b of blk)chk(b.x,b.y,18);
+    /* 禮讓 */
+    let haz=false;
+    if(act){const d=Math.hypot(act.x-c.x,act.y-c.y),R_=person?150:310;haz=d<(c.yl?R_+70:R_);}
+    c.yl=haz;
+    const nearNode=LIGHTS.some(L=>Math.hypot(L.x-c.x,L.y-c.y)<54);
+    const willYield=haz&&(person||!c.stub||c.hk>0);
+    let latT=carLane(c);
+    if(haz&&!person&&c.stub&&!c.hk&&c.bub<=0.01)c.bub=.3;
+    if(willYield){
+      if(!c.wasY){c.wasY=1;if(!person){G.s.yielded++;if(!laneShown)laneWant=1;}}
+      if(!nearNode)vt=0;
+      latT=ILL.some(l=>Math.hypot(l.x-c.x,l.y-c.y)<44)?12:R.w/2-11;
+    }else c.wasY=0;
+    if(c.stall>0)vt=0;
+    const dec=vt<c.v?150:60;
+    c.v+=clamp(vt-c.v,-dec*dt,60*dt);
+    c.lat+=clamp(latT-c.lat,-34*dt,34*dt);
+    const ps=c.s;
+    c.s+=c.v*dt*c.dir;
+    /* 路口轉彎 */
+    const xs=ROADX[c.road];
+    for(const x of xs){
+      if((ps<x.s&&c.s>=x.s)||(ps>x.s&&c.s<=x.s)){
+        if(Math.random()<.42){
+          const cand=[...x.nd.roads].filter(r=>r!==c.road);
+          if(cand.length){
+            const r2=cand[Math.floor(Math.random()*cand.length)],s2=sOn(r2,x.nd.x,x.nd.y),L2=RD[r2].len;
+            c.road=r2;c.s=s2;c.dir=s2<40?1:s2>L2-40?-1:(Math.random()<.5?1:-1);
+            c.lat=carLane(c);
+            break;
+          }
+        }
+      }
+    }
+    const Rn=RD[c.road];
+    if(c.s<=2&&c.dir<0||c.s>=Rn.len-2&&c.dir>0){c.dir*=-1;c.lat=-c.lat;c.s=clamp(c.s,3,Rn.len-3);}
+    const p=pointAt(c.road,c.s),ha=p.a+(c.dir<0?Math.PI:0);
+    const rx=-Math.sin(ha),ry=Math.cos(ha);
+    c.x=p.x+rx*c.lat;c.y=p.y+ry*c.lat;
+    c.a+=angd(ha,c.a)*Math.min(1,dt*8);
+    if(F&&Math.hypot(c.x-F.x,c.y-F.y)<280){
+      const sxp=(c.x-cam.x)*cam.z+vw/2,syp=(c.y-cam.y)*cam.z+vh/2;
+      if(sxp<-60||sxp>vw+60||syp<-60||syp>vh+60){cars.splice(i,1);i--;spawnCar(false);continue;}
+    }
+    /* 太遠就重生到玩家附近 */
+    if(act&&Math.hypot(c.x-act.x,c.y-act.y)>1700){cars.splice(i,1);i--;spawnCar(false);}
+  }
+}
+function PPmode(){return (G.ph==='pull'||G.ph==='fight'||G.ph==='rescue')&&PP;}
+/* ---------- 碰撞 ---------- */
+function buildCircs(){
+  circs=statC.slice();
+  for(const pk of park){const T=VT[pk.type];for(const o of T.circ)circs.push({x:pk.x+Math.cos(pk.a)*o,y:pk.y+Math.sin(pk.a)*o,r:T.r,park:1});}
+  for(const u of npcs){const T=VT[u.type];for(const o of T.circ)circs.push({x:u.x+Math.cos(u.a)*o,y:u.y+Math.sin(u.a)*o,r:T.r,park:1});}
+  for(const c of cars){for(const o of[-8,8])circs.push({x:c.x+Math.cos(c.a)*o,y:c.y+Math.sin(c.a)*o,r:8.6,car:c,v:c.v});}
+}
+function collideVeh(v){
+  const T=VT[v.type];let impact=0,hit=null;
+  for(let it=0;it<2;it++)for(const o of T.circ){
+    const cx=v.x+Math.cos(v.a)*o,cy=v.y+Math.sin(v.a)*o,d=sd(cx,cy);
+    if(d<T.r){
+      let g=sdGrad(cx,cy);const gl=Math.hypot(g[0],g[1])||1;g=[g[0]/gl,g[1]/gl];
+      const pen=Math.min(T.r-d,10);v.x+=g[0]*pen;v.y+=g[1]*pen;
+      const vn=-(Math.cos(v.a)*g[0]+Math.sin(v.a)*g[1])*v.v;
+      if(vn>0){impact=Math.max(impact,vn);v.v*=.8;}
+    }
+    for(const c of circs){
+      const dx=cx-c.x,dy=cy-c.y;if(dx>60||dx<-60||dy>60||dy<-60)continue;
+      const dd=Math.hypot(dx,dy),mr=T.r+c.r;
+      if(dd<mr&&dd>.01){
+        const pen=mr-dd;v.x+=dx/dd*pen;v.y+=dy/dd*pen;
+        impact=Math.max(impact,Math.abs(v.v)*.9+(c.v||0)*.5);hit=c;v.v*=.7;
+        if(c.car)c.car.stall=1.1;
+      }
+    }
+  }
+  return{impact,hit};
+}
+/* ---------- 開車 ---------- */
+function driveVeh(v,dt){
+  const T=VT[v.type];
+  const tg=(inp.r?1:0)-(inp.l?1:0);
+  const rn=MIS[G.mi].rain?1:0;
+  v.steer+=(tg-v.steer)*Math.min(1,dt*(tg?(rn?4:7):(rn?6:11)));
+  if(inp.gas&&!inp.brk){v.v+=(v.v<0?T.brk:T.acc*(rn?.85:1)*(1-Math.max(0,v.v)/T.vmax))*dt;}
+  else if(inp.brk){v.v-=(v.v>3?T.brk*(rn?.55:1):T.rev)*dt;if(v.v<-T.rev*.6)v.v=-T.rev*.6;}
+  else{const dr=Math.min(Math.abs(v.v),(28+Math.abs(v.v)*.9)*(rn?.6:1)*dt);v.v-=Math.sign(v.v)*dr;}
+  const d=v.steer*T.maxst*(1-.5*Math.min(1,Math.abs(v.v)/T.vmax));
+  v.a+=v.v/T.wb*Math.tan(d)*dt;
+  v.x+=Math.cos(v.a)*v.v*dt;v.y+=Math.sin(v.a)*v.v*dt;
+  G.s.driven+=Math.abs(v.v)*dt*M_PER_PX;
+}
+function honk(){
+  if(G.mode!=='play'||!V||G.honkCd>0)return;
+  G.honkCd=.7;G.s.honks++;
+  beep(420,.28,'square',.09);setTimeout(()=>beep(520,.22,'square',.07),90);
+  fx.push({type:'r',x:V.x,y:V.y,life:.7});
+  let n=0;
+  cars.forEach(c=>{if(c.stub&&!c.hk&&Math.hypot(c.x-V.x,c.y-V.y)<340){c.hk=1;c.stub=false;c.bub=2.4;n++;}});
+  if(n){G.s.honked=(G.s.honked||0)+n;toast('鳴笛有效：'+n+' 輛車讓路了','',1800);}
+}
+/* ---------- 階段切換 ---------- */
+function setModeUI(){
+  const pm=G.ph==='pull'||G.ph==='rescue',fm=G.ph==='fight';
+  document.body.classList.toggle('pm',pm);
+  $('#honk').textContent=fm?'射水':'鳴笛';
+  $('#bL').innerHTML='◀';$('#bR').innerHTML='▶';
+  if(pm||fm){$('#bGas').innerHTML='▲<small>上</small>';$('#bBrk').innerHTML='▼<small>下</small>';}
+  else{$('#bGas').innerHTML='油門';$('#bBrk').innerHTML='煞車<small>倒車</small>';}
+}
+function goalNow(){
+  const g=G.goals;
+  return G.ph==='d1'?g.d1:G.ph==='d2'?g.d2:G.ph==='d3'?g.d3:G.ph==='d4'?g.d4:G.ph==='d5'?g.d5:G.ph==='rescue'?rescueGoal():null;
+}
+function snapPark(v,tx,ty){
+  let best=null,bd=1e18;
+  for(const n in RD){const q=nearOnPoly(RD[n].pts,v.x,v.y);if(q.d<bd){bd=q.d;best={n,q};}}
+  const R=RD[best.n],p=R.pts,a=Math.atan2(p[best.q.i+1][1]-p[best.q.i][1],p[best.q.i+1][0]-p[best.q.i][0]);
+  const nn=sideNormal(a),sg=((tx-best.q.x)*nn.x+(ty-best.q.y)*nn.y)>0?1:-1,off=R.w/2-16;
+  const ha=Math.abs(angd(a,v.a))<Math.PI/2?a:a+Math.PI;
+  return{x:best.q.x+nn.x*sg*off,y:best.q.y+nn.y*sg*off,a:ha};
+}
+function startLay(){
+  const T=V;park.push({type:'truck',...snapPark(V,F.x,F.y)});
+  G.s.tArr=G.s.t;
+  V=null;G.ph='lay';
+  const tr=park[0],c=Math.cos(tr.a),s_=Math.sin(tr.a),n=sideNormal(tr.a);
+  const sideF=(F.x-tr.x)*n.x+(F.y-tr.y)*n.y>0?1:-1;
+  const dx=F.x-tr.x,dy=F.y-tr.y,dl=Math.hypot(dx,dy)||1;
+  lay={t:0,stand:{x:F.x-dx/dl*46,y:F.y-dy/dl*46}};
+  ff=[0,1,2].map(i=>({x:tr.x+n.x*sideF*16-c*(6*i),y:tr.y+n.y*sideF*16-s_*(6*i),i,walk:0,done:false}));
+  toast('水箱車到場！消防員自動下車、佈水線、出水','',2600);
+  beep(660,.15,'triangle',.1);
+  inp.l=inp.r=inp.gas=inp.brk=0;
+  if(MIS[G.mi].row){const n=neigh.slice().sort((a,b)=>{const f=q=>Math.cos(Math.atan2(q.cy-F.cy,q.cx-F.cx)-wind.a)*(Math.hypot(q.cx-F.cx,q.cy-F.cy)<90?1:-1);return f(b)-f(a);})[0];if(n)ignite(n,false);}
+  if(MIS[G.mi].hsr)dispatchHSR();
+}
+function ignite(n,count){
+  n.burning=true;n.hp=45;n.heat=100;
+  if(count!==false){n.lost=true;G.s.lost++;toast('鄰棟被延燒了！','bad',2200);beep(200,.25,'sawtooth',.1);buzz(60);}
+}
+function dispatchHSR(){
+  const m=G.mhsr;if(!m)return;
+  const st=pointAt('145',RD['145'].len-40);
+  const specs=[{type:'truck',code:'高鐵11',ds:150},{type:'tanker',code:'高鐵61',ds:230}];
+  specs.forEach((sp,i)=>{
+    const tp=pointAt(m.road,clamp(m.s+sp.ds,40,RD[m.road].len-40)),nn=sideNormal(tp.a);
+    const goal={x:tp.x+nn.x*m.side*(m.rd.w/2-16),y:tp.y+nn.y*m.side*(m.rd.w/2-16)};
+    const path=route(st.x,st.y,goal.x,goal.y,[]);
+    npcs.push({type:sp.type,code:sp.code,x:st.x,y:st.y,a:st.a,v:0,path,idx:1,state:'wait',delay:i*3.5,goal,tg:null,nz:null,rt:0});
+  });
+  toast('土庫車組已到場，「高鐵分隊」車組出動支援！','warn',3600);
+}
+function npcUpdate(dt){
+  for(const u of npcs){
+    if(u.state==='wait'){u.delay-=dt;if(u.delay<=0)u.state='drive';continue;}
+    if(u.state==='drive'){
+      const tgt=u.path[u.idx];
+      if(!tgt){npcPark(u);continue;}
+      const dx=tgt[0]-u.x,dy=tgt[1]-u.y,d=Math.hypot(dx,dy);
+      u.a+=angd(Math.atan2(dy,dx),u.a)*Math.min(1,dt*6);
+      let vm=125;if(u.idx>=u.path.length-1)vm=Math.min(vm,28+d*.55);
+      u.v=Math.min(vm,u.v+90*dt);
+      const step=u.v*dt;
+      if(d<=step+3){u.x=tgt[0];u.y=tgt[1];u.idx++;}
+      else{u.x+=dx/d*step;u.y+=dy/d*step;}
+    }else if(u.state==='park'){
+      u.rt-=dt;
+      const sts=[F].concat(neigh).filter(q=>!q.out);
+      if(u.rt<=0){u.rt=.8;
+        let best=null,bs=-1e9;
+        for(const q of sts){const d=Math.hypot(q.cx-u.x,q.cy-u.y);const sc=(q.burning?60:q.heat)-d*.15;if(sc>bs){bs=sc;best=q;}}
+        u.tg=best;
+        if(best){const dx=best.cx-u.x,dy=best.cy-u.y,d=Math.hypot(dx,dy)||1,k=Math.min(75,Math.max(20,d-40))/d;u.nz={x:u.x+dx*k,y:u.y+dy*k};}
+      }
+      if(u.tg&&u.nz){
+        for(const q of sts){if(Math.hypot(q.cx-u.nz.x,q.cy-u.nz.y)<(Math.max(q.b.w,q.b.h)*.5+85))hitState(q,u.tg===q?24*dt:12*dt,30*dt);}
+        if(Math.random()<.9)fx.push({type:'w',x:u.nz.x,y:u.nz.y,vx:(u.tg.cx-u.nz.x)*1.2+(Math.random()-.5)*14,vy:(u.tg.cy-u.nz.y)*1.2+(Math.random()-.5)*14,life:.55});
+      }
+    }
+  }
+}
+function npcPark(u){
+  const sp=snapPark(u,F.x,F.y);u.x=sp.x;u.y=sp.y;u.a=sp.a;u.v=0;u.state='park';
+  if(!G.hsrMsg){G.hsrMsg=1;toast('高鐵分隊車組到場支援，自動佈線射水','',3000);beep(660,.15,'triangle',.1);}
+}
+function startD2(){
+  G.ph='d2';spawnVeh('tanker');setModeUI();camSnap();gps=null;gpsT=0;
+  if(G.blkInfo&&!G.blkInfo.found){G.blkInfo.found=true;discovered=[{road:G.blkInfo.road,s:G.blkInfo.s}];toast('水箱車回報：前方有違停車堵路，導航已改道。開到綠色圈佔住消防栓','bad',3800);}
+  else toast('換你操作水庫車：開到綠色圈內，佔住消防栓','warn',3200);
+}
+function startPull(){
+  const sp=snapPark(V,hyd.x,hyd.y);park.push({type:'tanker',...sp});
+  const n=sideNormal(sp.a),sg=(hyd.x-sp.x)*n.x+(hyd.y-sp.y)*n.y>0?1:-1;
+  PP={x:sp.x+n.x*sg*(VT.tanker.wid/2+16),y:sp.y+n.y*sg*(VT.tanker.wid/2+16),ang:0,walk:0,sx:0,sy:0};
+  trail=[[hyd.x,hyd.y]];trailLen=0;
+  V=null;G.ph='pull';setModeUI();
+  inp.l=inp.r=inp.gas=inp.brk=0;
+  toast('換你操作消防員：拉水帶接到水箱車的藍色接水口','warn',3600);
+}
+function connected(){
+  F.conn=true;PP=null;supply=trail.slice();trail=[];
+  fx.push({type:'r',x:park[0].x,y:park[0].y,life:.8});beep(660,.15,'triangle',.1);setTimeout(()=>beep(880,.25,'triangle',.1),140);
+  if(MIS[G.mi].ladder){G.ph='d5';spawnVeh('ladder');setModeUI();camSnap();gps=null;gpsT=0;
+    toast('水源接通！水線打不到高樓層，換開雲梯車「土庫31」','warn',3800);}
+  else startFight();
+}
+function startFight(){
+  G.ph='fight';
+  const st=lay.stand;
+  PP={x:st.x,y:st.y,ang:Math.atan2(F.cy-st.y,F.cx-st.x),walk:0};
+  unstickPP();if(ff[0])ff[0].ctrl=true;
+  setModeUI();camSnap();
+  if(PT)PT.on=true;
+  spawnRes();
+  toast(RES.length?'水線到位！先靠近受困居民，帶他們到綠色集合點，再射水滅火':(PT?'水線到位！用「射水」滅火、保護鄰棟（有人受傷，救護車稍後出動）':'水線到位！移動消防員、按住「射水」滅火並保護鄰棟'),'warn',4200);
+  setTimeout(()=>{if(G.mode==='play'&&G.ph==='fight')toast('📻 隊部：現場可能閃燃或瓦斯外洩，聽到警告立刻後退！','warn',3600);},4600);
+}
+function startLadder(){
+  const sp=snapPark(V,F.x,F.y);park.push({type:'ladder',...sp});V=null;G.ph='ladder';
+  lad={t:0,x:sp.x,y:sp.y,a:sp.a};inp.l=inp.r=inp.gas=inp.brk=0;
+  toast('雲梯車到場：伸出支撐腳、架設雲梯','',2600);beep(660,.15,'triangle',.1);
+}
+function ladderUpdate(dt){
+  lad.t+=dt;
+  if(lad.t>=3&&!F.ladder){F.ladder=true;toast('雲梯架設完成，從上方對高樓層射水！','',2600);}
+  if(lad.t>=4.6)startFight();
+}
+function fightDone(){return F.out&&neigh.every(n=>!n.burning);}
+function hitState(st,dmg,cool){
+  if(st.out)return;
+  if(st.burning){
+    if(st.tall)return;
+    st.hp-=dmg;
+    if(st.hp<=0){st.hp=0;st.burning=false;st.out=true;if(st===F){toast('主要火點撲滅！','',2000);beep(880,.3,'triangle',.1);}}
+  }else{st.heat=Math.max(0,st.heat-cool);st.wet=3;}
+}
+function playerSpray(dt){
+  if(G.ph!=='fight'||!PP||!inp.spray)return;
+  const a=PP.ang;
+  for(let i=0;i<3;i++)fx.push({type:'w',x:PP.x+Math.cos(a)*6,y:PP.y+Math.sin(a)*6,vx:Math.cos(a)*190+(Math.random()-.5)*34,vy:Math.sin(a)*190+(Math.random()-.5)*34,life:.55});
+  for(const st of[F].concat(neigh)){
+    if(st.out)continue;
+    const dx=st.cx-PP.x,dy=st.cy-PP.y,d=Math.hypot(dx,dy),half=Math.max(st.b.w,st.b.h)/2;
+    if(d-half*.7>140)continue;
+    const da=Math.abs(angd(Math.atan2(dy,dx),a)),tol=Math.atan2(half,Math.max(12,d))+.28;
+    if(da>tol)continue;
+    hitState(st,36*dt,55*dt);
+  }
+}
+function startLoad(){
+  const sp=snapPark(V,PT.x,PT.y);park.push({type:'amb',...sp});
+  load={t:0,x:sp.x,y:sp.y,a:sp.a};V=null;G.ph='load';
+  inp.l=inp.r=inp.gas=inp.brk=0;toast('救護員把傷患抬上擔架、送上車','',2400);
+}
+function startD4(){
+  const a=park.pop();V={type:'amb',x:a.x,y:a.y,a:a.a,v:0,steer:0,hp:G.ambHp||100};
+  PT.state='loaded';G.ph='d4';gps=null;gpsT=0;
+  toast('傷患上車！送醫院急診（藍色圈）','warn',2800);
+}
+function finishMission(ok,why){
+  if(G.mode!=='play')return;
+  G.mode="result";G.lastRes=[ok,why];inp.l=inp.r=inp.gas=inp.brk=0;
+  document.querySelectorAll('.pad').forEach(b=>b.classList.remove('on'));
+  const s=G.s,M=MIS[G.mi];
+  let pts=0,stars=0;
+  if(ok){
+    pts=Math.max(30,Math.round(560+(M.co?(G.coBonus||0):0)+(M.ems?(G.emsBonus||0):0)-s.t*1.3+s.tank*.8+((M.vic||M.ems)?s.pat*.8:0)-s.hits*12-s.ped*120-s.lost*45+(G.kitBonus||0)+(G.callBonus||0)+(M.quake?(G.qBonus||0):0)+RES.filter(r=>r.state!=='hurt').length*60-s.resHurt*100-s.ffHit*80));
+    stars=(s.hits<=2&&s.ped===0&&s.lost<=1&&s.t<M.par&&s.resHurt===0&&s.ffHit<=1)?3:(s.hits<=7&&s.ped===0&&s.lost<=3)?2:1;
+    G.res[G.mi]={pts,t:s.t,hits:s.hits};
+    beep(660,.18,'triangle',.1);setTimeout(()=>beep(880,.3,'triangle',.1),160);
+  }else beep(160,.5,'sawtooth',.1);
+  resultSheet(ok,why,pts,stars);
+}
+function failCheck(){
+  const s=G.s;
+  if(V&&V.hp<=0)return finishMission(false,'車輛嚴重受損，無法繼續行駛。');
+  if(s.lost>=MIS[G.mi].maxLost)return finishMission(false,'火勢延燒到太多棟建築，失控了。');
+  if(F.tank<=0&&!F.conn&&!F.out)return finishMission(false,'水箱車的水用完了，水庫車沒能及時接上水源，火勢擴大。');
+  if(PT&&PT.on&&PT.state!=='done'&&PT.hp<=0)return finishMission(false,'傷患延誤送醫，情況惡化。');
+}
+/* ---------- 每幀更新 ---------- */
+function update(dt){
+  const s=G.s;G.t+=dt;s.t+=dt;s.hitCd-=dt;G.honkCd-=dt;
+  buildCircs();
+  const ph=G.ph;
+  if(V){
+    driveVeh(V,dt);
+    const c=collideVeh(V);
+    if(c.impact>30&&s.hitCd<=0){
+      s.hitCd=.45;s.hits++;s.lh=c.hit?('circ '+Math.round(c.hit.x)+','+Math.round(c.hit.y)+(c.hit.car?' car'+(c.hit.car.road||''):'')):'wall sd'+sd(V.x,V.y).toFixed(1);
+      V.hp=Math.max(0,V.hp-Math.min(14,2+c.impact/9));
+      shake=Math.min(1,c.impact/90);buzz(40);beep(120,.18,'sawtooth',.12);
+      for(let i=0;i<8;i++)fx.push({type:'p',x:V.x+Math.cos(V.a)*22,y:V.y+Math.sin(V.a)*22,vx:(Math.random()-.5)*90,vy:(Math.random()-.5)*90,life:.45});
+      if(c.hit&&c.hit.car&&!c.hit.car.blkr)toast('撞到車了！','bad',1400);
+    }
+    const g=goalNow();
+    if(g&&Math.hypot(V.x-g.x,V.y-g.y)<g.r&&Math.abs(V.v)<38){
+      if(ph==='d1'){if(MIS[G.mi].ems)startAssess();else if(MIS[G.mi].quake||MIS[G.mi].co)startRescue();else startLay();}
+      else if(ph==='d2')startPull();
+      else if(ph==='d3')startLoad();
+      else if(ph==='d4'){PT.state='done';V=null;G.ambHp=null;finishMission(true);}
+      else if(ph==='d5')startLadder();
+    }
+    /* 闖紅燈提醒 */
+    if(V)for(const L of LIGHTS){
+      if(Math.hypot(V.x-L.x,V.y-L.y)<26&&Math.abs(V.v)>95&&!V.redT){
+        const red=L.list.some(l=>{const dv=Math.abs(angd(V.a,l.a));const along=(dv<Math.PI/4||dv>3*Math.PI/4);return along&&!lightGreen(L,l.g,G.t);});
+        if(red){V.redT=2;s.redPass++;toast('過紅燈要減速確認，左右車可能不讓','warn',1800);}
+      }
+    }
+    if(V)V.redT=Math.max(0,(V.redT||0)-dt);
+    /* 發現堵路 */
+    if(V&&G.blkInfo&&!G.blkInfo.found&&Math.hypot(V.x-G.blkInfo.x,V.y-G.blkInfo.y)<300){
+      G.blkInfo.found=true;discovered=[{road:G.blkInfo.road,s:G.blkInfo.s}];gpsT=0;
+      toast('前方違停車堵死整條路！導航已重新規劃','bad',3200);
+    }
+  }
+  if(ph==='lay')layUpdate(dt);
+  else if(ph==='pull'||ph==='fight'||ph==='rescue'){personUpdate(dt);if(ph==='rescue'&&PP)rescueUpdate(dt);}
+  else if(ph==='ladder')ladderUpdate(dt);
+  else if(ph==='load')loadUpdate(dt);
+  fireUpdate(dt);playerSpray(dt);npcUpdate(dt);
+  if(G.ph==='fight'&&fightDone()){
+    if(MIS[G.mi].vic){G.ph='d3';PP=null;spawnVeh('amb');setModeUI();camSnap();gps=null;gpsT=0;toast('火勢控制住了！換開救護車救傷患','bad',3200);}
+    else finishMission(true);
+  }
+  updateCars(dt);
+  /* 人車碰撞 */
+  if(PP){
+    for(const c of cars){
+      if(Math.hypot(c.x-PP.x,c.y-PP.y)<16&&c.v>10){
+        s.ped++;shake=1;buzz(80);beep(90,.3,'sawtooth',.14);
+        toast('消防員被車撞到！過馬路要等車讓你','bad',2600);
+        if(G.ph==='fight'){PP.x=lay.stand.x;PP.y=lay.stand.y;}else if(G.ph==='rescue'){const tk=park[park.length-1];PP.x=tk.x;PP.y=tk.y+16;}else{const tk=park[park.length-1];PP.x=tk.x;PP.y=tk.y+16;trail=[[hyd.x,hyd.y]];trailLen=0;}break;
+      }
+    }
+  }
+  if(PT&&PT.on&&PT.state!=='done'&&PT.state!=='loaded')PT.hp=Math.max(0,PT.hp-.4*dt);
+  else if(PT&&PT.state==='loaded')PT.hp=Math.max(0,PT.hp-.4*dt);
+  s.pat=PT?PT.hp:100;s.tank=F.tank;
+  G.qs=Math.max(0,(G.qs||0)-dt*1.4);G.qd=Math.max(0,(G.qd||0)-dt/10);
+  hazUpdate(dt);resUpdate(dt);radioUpdate(dt);
+  /* 特效 */
+  if(fx.length<700)for(const st of[F].concat(neigh)){
+    if(!st.burning)continue;
+    const sz=Math.max(.4,st.hp/100),b=st.b,wx=Math.cos(wind.a),wy=Math.sin(wind.a);
+    if(Math.random()<dt*14*sz)fx.push({type:'k',x:st.cx+(Math.random()-.5)*b.w*.5,y:st.cy+(Math.random()-.5)*b.h*.5,vx:wx*(26+Math.random()*14),vy:wy*(26+Math.random()*14),life:2.6,l0:2.6,r:6+Math.random()*5});
+    if(Math.random()<dt*9*sz)fx.push({type:'e',x:st.cx+(Math.random()-.5)*b.w*.6,y:st.cy+(Math.random()-.5)*b.h*.6,vx:wx*40+(Math.random()-.5)*30,vy:wy*40+(Math.random()-.5)*30-14,life:.9+Math.random()*.7});
+  }
+  if(F.spray&&lay&&G.ph!=='fight'&&!F.out)for(let i=0;i<3;i++){
+    const n=ff[0];if(!n)break;
+    const dx=F.x-n.x,dy=F.y-n.y,dl=Math.hypot(dx,dy)||1;
+    fx.push({type:'w',x:n.x,y:n.y,vx:dx/dl*120+(Math.random()-.5)*20,vy:dy/dl*120+(Math.random()-.5)*20,life:Math.min(.7,dl/120)});
+  }
+  if(lad&&F.ladder&&!F.out){const t=ladTip();if(t&&Math.random()<.9)fx.push({type:'w',x:t.ex,y:t.ey,vx:t.ux*130+(Math.random()-.5)*30,vy:t.uy*130+(Math.random()-.5)*30,life:.5});}
+  for(let i=fx.length-1;i>=0;i--){const f=fx[i];if(f.type==='w'&&!f.l0)f.l0=f.life;f.life-=dt;if(f.life<=0){if(f.type==='w'&&fx.length<700&&Math.random()<.85){for(let q=0;q<2;q++)fx.push({type:'m',x:f.x,y:f.y,vx:(Math.random()-.5)*34,vy:(Math.random()-.5)*34,life:.55,l0:.55});}fx.splice(i,1);continue;}if(f.vx!==undefined){f.x+=f.vx*dt;f.y+=f.vy*dt;if(f.type==='c'){f.vy+=260*dt;f.rot=(f.rot||0)+(f.vr||0)*dt;}}}
+  failCheck();
+  shake=Math.max(0,shake-dt*3);
+  /* GPS */
+  gpsT-=dt;
+  const g=goalNow();
+  if(V&&g&&gpsT<=0){gpsT=.5;gps=route(V.x,V.y,g.x,g.y,discovered);}
+  /* 攝影機 */
+  let tx,ty,tz;
+  const base=camBase();
+  if(V){tx=V.x+Math.cos(V.a)*V.v*.45;ty=V.y+Math.sin(V.a)*V.v*.45;tz=base*(1-.12*Math.min(1,Math.abs(V.v)/150));}
+  else if(PP){tx=PP.x;ty=PP.y;tz=base*1.35;}
+  else if(G.ph==='lay'){tx=(park[0].x+F.x)/2;ty=(park[0].y+F.y)/2;tz=base*1.25;}
+  else if(G.ph==='load'){tx=load.x;ty=load.y;tz=base*1.25;}
+  else{tx=cam.x;ty=cam.y;tz=cam.z;}
+  const k=Math.min(1,dt*3);cam.x+=(tx-cam.x)*k;cam.y+=(ty-cam.y)*k;cam.z+=(tz-cam.z)*k;
+}
+function camSnap(){const t=V||PP;if(t){cam.x=t.x;cam.y=t.y;}cam.z=camBase();}
+function camBase(){const w=vw||400,h=vh||800;return(w>h*1.15)?clamp(h/570,.5,1.2):clamp(Math.min(w,h)/430,.62,1.5);}
+function layUpdate(dt){
+  lay.t+=dt;
+  ff.forEach(f=>{
+    const tg={x:lay.stand.x+(f.i-1)*9,y:lay.stand.y+(f.i-1)*7};
+    if(lay.t<f.i*.4)return;
+    const d=Math.hypot(tg.x-f.x,tg.y-f.y);
+    if(d>3){const sp=48*dt;f.x+=(tg.x-f.x)/d*Math.min(sp,d);f.y+=(tg.y-f.y)/d*Math.min(sp,d);f.walk+=dt*10;f.ang=Math.atan2(tg.y-f.y,tg.x-f.x);}
+    else f.done=true;
+  });
+  if(ff[0].done&&!F.spray){F.spray=true;toast('出水！水箱車的水有限，水庫車要快去接消防栓','warn',2600);}
+  if(F.spray&&lay.t>(lay.sprayAt=lay.sprayAt||lay.t)+1.8)startD2();
+}
+function fireUpdate(dt){
+  const s=G.s;
+  if(F.spray&&!F.out){
+    const r=F.tall?(F.ladder?7:0):(F.conn?.9:.3);
+    F.hp-=r*dt;
+    if(!F.conn)F.tank=Math.max(0,F.tank-.75*dt);
+    if(F.hp<=0){F.hp=0;F.out=true;F.burning=false;toast('主要火點撲滅！','',2000);beep(880,.3,'triangle',.1);}
+  }
+  const on=s.tArr!=null&&s.t>s.tArr+8;
+  const srcs=[F].concat(neigh).filter(q=>q.burning);
+  for(const n of neigh){
+    n.wet=Math.max(0,n.wet-dt);
+    if(n.burning){n.hp=Math.min(100,n.hp+2.5*dt);continue;}
+    if(n.out||!on)continue;
+    let rate=0;
+    for(const sr of srcs){
+      const dx=n.cx-sr.cx,dy=n.cy-sr.cy,d=Math.hypot(dx,dy),RAD=sr.b&&sr.b.tower?230:165;
+      if(d>=RAD)continue;
+      const cw=(dx*Math.cos(wind.a)+dy*Math.sin(wind.a))/(d||1),wf=.3+.9*(.5+.5*cw);
+      rate+=6*(1-d/RAD)*wf*(sr.hp/100);
+    }
+    rate*=(n.wood?1.8:1)*(n.wet>0?.25:1)*.7*(F.conn?1:.3);
+    if(rate>0)n.heat+=rate*dt;else n.heat=Math.max(0,n.heat-.8*dt);
+    if(n.heat>=100)ignite(n);
+  }
+}
+function personUpdate(dt){
+  let dx=(inp.r?1:0)-(inp.l?1:0),dy=(inp.brk?1:0)-(inp.gas?1:0);
+  if(G.stun>0){dx=0;dy=0;}
+  const sp=72;
+  if(dx||dy){
+    const l=Math.hypot(dx,dy);dx/=l;dy/=l;
+    PP.ang=Math.atan2(dy,dx);PP.walk+=dt*10;
+    const mv=(ax,ay)=>{
+      const nx=PP.x+ax*sp*dt,ny=PP.y+ay*sp*dt;
+      if(sd(nx,ny)<-14&&sd(nx,ny)<sd(PP.x,PP.y))return false;
+      for(const c of circs){const dn=Math.hypot(nx-c.x,ny-c.y);if(dn<c.r+4.5&&dn<Math.hypot(PP.x-c.x,PP.y-c.y))return false;}
+      PP.x=nx;PP.y=ny;return true;
+    };
+    const ox=PP.x,oy=PP.y;
+    if(!mv(dx,dy)){if(!mv(dx,0))mv(0,dy);}
+    if(Math.hypot(PP.x-ox,PP.y-oy)<sp*dt*.3){PP.stk=(PP.stk||0)+dt;if(PP.stk>.8){PP.stk=0;unstickPP();}}else PP.stk=0;
+    /* 水帶 */
+    const last=trail[trail.length-1];
+    if(G.ph==='fight'||G.ph==='rescue'){}
+    else if(trail.length>1&&Math.hypot(PP.x-trail[trail.length-2][0],PP.y-trail[trail.length-2][1])<9){
+      const rm=trail.pop();trailLen=Math.max(0,trailLen-Math.hypot(rm[0]-trail[trail.length-1][0],rm[1]-trail[trail.length-1][1]));
+    }else if(Math.hypot(PP.x-last[0],PP.y-last[1])>=10){
+      const add=Math.hypot(PP.x-last[0],PP.y-last[1]);
+      if(trailLen+add>HOSE_MAX){PP.x=ox;PP.y=oy;if(!PP.warn||G.t-PP.warn>3){PP.warn=G.t;toast('水帶不夠長了，換條較近的路線','warn',1800);}}
+      else{trail.push([PP.x,PP.y]);trailLen+=add;}
+    }
+  }
+  if(G.ph==='fight'||G.ph==='rescue'){if(ff[0]){ff[0].x=PP.x;ff[0].y=PP.y;}return;}
+  const tr=park[0];
+  if(Math.hypot(PP.x-tr.x,PP.y-tr.y)<30)connected();
+}
+function loadUpdate(dt){
+  load.t+=dt;
+  if(load.t>=3.2)startD4();
+}
+/* ---------- 繪圖 ---------- */
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function strokeRoad(r){ctx.beginPath();r.pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.stroke();}
+function buildFurn(){
+  FURN=[];
+  const inBld=(x,y,m)=>{for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const arr=HB.get((Math.floor(x/HBS)+a)*1000+Math.floor(y/HBS)+b);if(!arr)continue;for(const h of arr)if(x>h.x-m&&x<h.x+h.w+m&&y>h.y-m&&y<h.y+h.h+m)return true;}
+    for(const l of LM)if(x>l.x0-m&&x<l.x1+m&&y>l.y0-m&&y<l.y1+m)return true;return false;};
+  let k=0;
+  for(const n in RD){
+    const R=RD[n];
+    for(let sv=70;sv<R.len-60;sv+=105){
+      const p=pointAt(n,sv),nn={x:-Math.sin(p.a),y:Math.cos(p.a)};
+      if(LIGHTS.some(L=>Math.hypot(L.x-p.x,L.y-p.y)<95))continue;
+      for(const side of[-1,1]){
+        const x=p.x+nn.x*side*(R.w/2+15),y=p.y+nn.y*side*(R.w/2+15);
+        if(inBld(x,y,6))continue;
+        k++;const lamp=((k+(side>0?1:0))%2===0)&&h32(Math.floor(x),Math.floor(y),1,1)<55;
+        FURN.push({x,y,t:lamp?'lamp':'tree',r:10+h32(Math.floor(x),Math.floor(y),2,2)%7,g:h32(Math.floor(x),Math.floor(y),3,3)});
+      }
+    }
+  }
+}
+function drawFurn(x0,y0,x1,y1){
+  if(!FURN)buildFurn();
+  for(const f of FURN){
+    if(f.x<x0-30||f.x>x1+30||f.y<y0-30||f.y>y1+30)continue;
+    if(f.t==='lamp'){
+      const k=34/PK,tx=f.x+(f.x-cam.x)*k,ty=f.y+(f.y-cam.y)*k;
+      ctx.strokeStyle='#23282e';ctx.lineWidth=2.4;ctx.beginPath();ctx.moveTo(f.x,f.y);ctx.lineTo(tx,ty);ctx.stroke();
+      ctx.fillStyle=NIGHT?'#ffe9b0':'#c6ccd2';ctx.beginPath();ctx.arc(tx,ty,3.8,0,6.3);ctx.fill();
+    }else{
+      const k=26/PK,tx=f.x+(f.x-cam.x)*k,ty=f.y+(f.y-cam.y)*k,r=f.r;
+      ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(f.x+5,f.y+5,r*.8,r*.55,0,0,6.3);ctx.fill();
+      ctx.strokeStyle='#5a3f2a';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(f.x,f.y);ctx.lineTo(tx,ty);ctx.stroke();
+      const cols=['#2f6b3a','#3a7d44','#2a5e36'];
+      ctx.fillStyle=cols[f.g%3];ctx.beginPath();for(let a=0;a<6;a++){const an=a*1.047+.3;ctx.lineTo(tx+Math.cos(an)*r,ty+Math.sin(an)*r);}ctx.closePath();ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,.12)';ctx.beginPath();for(let a=0;a<6;a++){const an=a*1.047+.3;ctx.lineTo(tx-2+Math.cos(an)*r*.55,ty-2+Math.sin(an)*r*.55);}ctx.closePath();ctx.fill();
+    }
+  }
+}
+function drawWorld(x0,y0,x1,y1){
+  NIGHT=!!MIS[G.mi].night;WINQ=[];SIGNQ=[];
+  ctx.fillStyle='#22352b';ctx.fillRect(x0,y0,x1-x0,y1-y0);
+  ctx.fillStyle='#454c53';ctx.beginPath();URB.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fill();
+  ctx.lineCap='round';ctx.lineJoin='round';
+  for(const n in RD){const r=RD[n];ctx.strokeStyle='#8f9397';ctx.lineWidth=r.w+26;strokeRoad(r);}
+  for(const n in RD){const r=RD[n];ctx.strokeStyle='#1a2026';ctx.lineWidth=r.w+8;strokeRoad(r);}
+  for(const n in RD){const r=RD[n];ctx.strokeStyle=r.kind==='main'?'#3a4249':'#343b42';ctx.lineWidth=r.w;strokeRoad(r);}
+  ctx.lineCap='butt';
+  for(const n in RD){const r=RD[n];ctx.setLineDash([16,18]);ctx.strokeStyle=r.kind==='main'?'rgba(230,190,60,.85)':'rgba(235,235,235,.45)';ctx.lineWidth=r.kind==='main'?2.6:2;strokeRoad(r);}
+  ctx.setLineDash([]);
+  for(const L of LIGHTS){
+    if(L.x<x0-90||L.x>x1+90||L.y<y0-90||L.y>y1+90)continue;
+    for(const l of L.list)for(const sg of[-1,1]){
+      const dx=Math.cos(l.a),dy=Math.sin(l.a);
+      ctx.save();ctx.translate(L.x+dx*sg*64,L.y+dy*sg*64);ctx.rotate(l.a);ctx.fillStyle='rgba(236,236,236,.72)';
+      for(let q=-3;q<=3;q++)ctx.fillRect(-7,q*8-2.5,14,5);
+      ctx.restore();
+    }
+  }
+  /* 房屋 */
+  for(let a=Math.floor(x0/HBS);a<=Math.floor(x1/HBS);a++)for(let b=Math.floor(y0/HBS);b<=Math.floor(y1/HBS);b++){
+    const arr=HB.get(a*1000+b);if(!arr)continue;
+    for(const h of arr){
+      if(h.skip||h.x>x1||h.x+h.w<x0||h.y>y1||h.y+h.h<y0)continue;
+      drawBldg(h);
+    }
+  }
+  for(const b of cbs)if(b.x<x1&&b.x+b.w>x0&&b.y<y1&&b.y+b.h>y0)drawBldg(b);
+  /* 地標 */
+  for(const l of LM){
+    if(l.x1<x0||l.x0>x1||l.y1<y0||l.y0>y1)continue;
+    drawLandmark(l);
+  }
+  drawFurn(x0,y0,x1,y1);
+  /* 紅綠燈 */
+  for(const L of LIGHTS){
+    if(L.x<x0-80||L.x>x1+80||L.y<y0-80||L.y>y1+80)continue;
+    for(const g of[0,1]){
+      const l=L.list.find(q=>q.g===g);if(!l)continue;
+      const grn=lightGreen(L,g,G.t),ph=(G.t+L.off)%16,yel=g===0?(ph>=6.2&&ph<7):(ph>=14.2&&ph<15);
+      const col=yel?'#ffd34d':grn?'#46d17f':'#ff4d4d';
+      for(const sg of[-1,1]){
+        const px=L.x+Math.cos(l.a)*sg*50-Math.sin(l.a)*sg*-0,py=L.y+Math.sin(l.a)*sg*50;
+        ctx.fillStyle='#111';rr(px-6,py-6,12,12,3);ctx.fill();
+        ctx.fillStyle=col;ctx.beginPath();ctx.arc(px,py,4,0,6.3);ctx.fill();
+      }
+    }
+  }
+}
+function drawLandmark(l){
+  const w=l.w,h=l.h,x=l.x0,y=l.y0,ht={fire:26,school:18,temple:24,shop:20,police:20,clinic:18,hospital:46,factory:22}[l.type]||18,k=ht/PK;
+  const ox=(l.c[0]-cam.x)*k,oy=(l.c[1]-cam.y)*k;
+  {const bx=[x,x+w,x+w,x],by=[y,y,y+h,y+h],nr=[[0,-1],[1,0],[0,1],[-1,0]];
+   ctx.fillStyle='rgba(0,0,0,.34)';ctx.fillRect(x+4,y+4,w,h);
+   ctx.fillStyle=l.type==='hospital'?'#b9c4cf':'#6d6258';
+   for(let i=0;i<4;i++){const c=(i+1)%4,mx_=(bx[i]+bx[c])/2,my_=(by[i]+by[c])/2;if(nr[i][0]*(cam.x-mx_)+nr[i][1]*(cam.y-my_)<=0)continue;
+     ctx.beginPath();ctx.moveTo(bx[i],by[i]);ctx.lineTo(bx[c],by[c]);ctx.lineTo(bx[c]+ox,by[c]+oy);ctx.lineTo(bx[i]+ox,by[i]+oy);ctx.closePath();ctx.fill();}}
+  ctx.save();ctx.translate(ox,oy);
+  const base={fire:'#c9443a',school:'#c2a98a',temple:'#c2402e',shop:'#b98a5a',police:'#4f6f9a',clinic:'#6aa38f',hospital:'#e9eef2',factory:'#a8afb6'}[l.type];
+  ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(x+4,y+4,w,h);
+  if(l.type==='school'){
+    ctx.fillStyle='#3d6b46';ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='#d8c6a2';ctx.fillRect(x+w*.06,y+h*.08,w*.88,h*.3);
+    ctx.fillStyle='#9b6a48';ctx.fillRect(x+w*.06,y+h*.08,w*.88,6);
+    ctx.fillStyle='#b64d3a';ctx.beginPath();ctx.ellipse(x+w*.5,y+h*.7,w*.3,h*.18,0,0,6.3);ctx.fill();
+    ctx.fillStyle='#3d6b46';ctx.beginPath();ctx.ellipse(x+w*.5,y+h*.7,w*.22,h*.1,0,0,6.3);ctx.fill();
+  }else if(l.type==='temple'){
+    ctx.fillStyle='#d9b45a';ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='#b83a26';ctx.fillRect(x+w*.15,y+h*.12,w*.7,h*.45);
+    ctx.fillStyle='#e8c36a';ctx.fillRect(x+w*.15,y+h*.3,w*.7,4);
+    ctx.fillStyle='#2f6b54';ctx.fillRect(x+w*.3,y+h*.6,w*.4,h*.26);
+  }else if(l.type==='hospital'){
+    ctx.fillStyle='#dbe3ea';ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='#f4f7fa';ctx.fillRect(x+8,y+8,w-16,h-16);
+    ctx.fillStyle='#e0332a';ctx.fillRect(x+w/2-6,y+h/2-22,12,44);ctx.fillRect(x+w/2-22,y+h/2-6,44,12);
+    ctx.fillStyle='#e0332a';ctx.fillRect(x+w*.3,y+h-14,w*.4,10);
+  }else if(l.type==='fire'){
+    ctx.fillStyle='#b83a30';ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='#e9d9d6';ctx.fillRect(x+6,y+h*.55,w-12,h*.4);
+    ctx.fillStyle='#252b31';for(let i=0;i<3;i++)ctx.fillRect(x+14+i*(w-28)/3,y+h*.6,(w-28)/3-6,h*.32);
+    ctx.fillStyle='#fff';ctx.font='bold 18px '+FONT;ctx.textAlign='center';ctx.fillText('119',x+w/2,y+h*.4);
+  }else if(l.type==='factory'){
+    ctx.fillStyle=base;ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='#8c949c';ctx.fillRect(x+8,y+8,w*.6,h-16);
+    ctx.fillStyle='#d7dbe0';ctx.beginPath();ctx.arc(x+w*.82,y+h*.3,14,0,6.3);ctx.arc(x+w*.82,y+h*.7,14,0,6.3);ctx.fill();
+  }else{
+    ctx.fillStyle=base;ctx.fillRect(x,y,w,h);
+    ctx.fillStyle='rgba(255,255,255,.2)';ctx.fillRect(x+6,y+6,w-12,h*.4);
+    if(l.type==='clinic'){ctx.fillStyle='#fff';ctx.fillRect(x+w/2-3,y+h/2-9,6,18);ctx.fillRect(x+w/2-9,y+h/2-3,18,6);}
+    if(l.type==='shop'){ctx.fillStyle='#5a3a24';ctx.fillRect(x,y+h-12,w,12);}
+  }
+  ctx.strokeStyle='rgba(0,0,0,.4)';ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);
+  ctx.restore();
+}
+function drawLabels(){
+  /* 在螢幕座標畫文字 */
+  const z=cam.z;
+  const sx=x=>(x-cam.x)*z+vw/2,sy=y=>(y-cam.y)*z+vh/2;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  for(const l of LM){
+    const px=sx(l.c[0]),py=sy(l.c[1]);
+    if(px<-120||px>vw+120||py<-40||py>vh+40)continue;
+    ctx.font='700 13px '+FONT;
+    const w=ctx.measureText(l.name).width+14;
+    ctx.fillStyle='rgba(10,16,24,.82)';rr(px-w/2,py-11,w,22,6);ctx.fill();
+    ctx.fillStyle=l.id==='hp'?'#ff9aa8':l.id==='fs'?'#ff8a6a':'#f2f5f9';ctx.fillText(l.name,px,py+1);
+  }
+  ctx.font='600 11px '+FONT;
+  for(const n in RD){
+    const r=RD[n];if(r.kind==='main'&&false)continue;
+    const nm=n==='145'?'縣道145':n==='158'?'158甲':n==='圓環線'?'':n.replace('成功路E','成功路');
+    if(!nm)continue;
+    for(const f of[.3,.7]){
+      const p=pointAt(n,r.len*f),px=sx(p.x),py=sy(p.y);
+      if(px<0||px>vw||py<0||py>vh)continue;
+      const w=ctx.measureText(nm).width+8;
+      ctx.fillStyle='rgba(20,28,36,.78)';rr(px-w/2,py-8,w,16,5);ctx.fill();
+      ctx.fillStyle='#c5d3e0';ctx.fillText(nm,px,py+.5);
+    }
+  }
+}
+function drawGoal(){
+  const g=goalNow();if(!g)return;
+  const pul=1+.08*Math.sin(tnow*5);
+  ctx.save();ctx.strokeStyle=g.col;ctx.lineWidth=4;ctx.setLineDash([10,8]);ctx.beginPath();ctx.arc(g.x,g.y,g.r*pul,0,6.3);ctx.stroke();ctx.setLineDash([]);
+  ctx.globalAlpha=.16;ctx.fillStyle=g.col;ctx.beginPath();ctx.arc(g.x,g.y,g.r,0,6.3);ctx.fill();ctx.restore();
+}
+function drawGps(){
+  if(!gps||!V)return;
+  ctx.save();ctx.strokeStyle='rgba(80,200,255,.55)';ctx.lineWidth=8;ctx.lineJoin='round';ctx.lineCap='round';
+  ctx.beginPath();ctx.moveTo(V.x,V.y);for(let i=1;i<gps.length;i++)ctx.lineTo(gps[i][0],gps[i][1]);ctx.stroke();
+  ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=2;ctx.setLineDash([8,12]);ctx.lineDashOffset=-tnow*40;ctx.stroke();ctx.restore();
+}
+function drawCar(c){
+  ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.a);
+  ctx.fillStyle='rgba(0,0,0,.28)';rr(-15,-5.5,30,15,4);ctx.fill();
+  ctx.fillStyle=c.col;rr(-15,-7.5,30,15,4);ctx.fill();
+  ctx.fillStyle='rgba(14,22,30,.78)';rr(-4,-6,10,12,2);ctx.fill();
+  ctx.fillStyle='#ffeeb0';ctx.fillRect(13,-6,2,4);ctx.fillRect(13,2,2,4);
+  ctx.fillStyle='#c4352d';ctx.fillRect(-15,-6,2,4);ctx.fillRect(-15,2,2,4);
+  ctx.restore();
+}
+function drawVeh(type,x,y,a,siren,code){
+  const T=VT[type];ctx.save();ctx.translate(x,y);ctx.rotate(a);
+  const L=T.len/2,W=T.wid/2;
+  ctx.fillStyle='rgba(0,0,0,.3)';rr(-L+2,-W+3,T.len,T.wid,5);ctx.fill();
+  if(type==='amb'){
+    ctx.fillStyle='#f4f6f8';rr(-L,-W,T.len,T.wid,5);ctx.fill();
+    ctx.fillStyle='#e0332a';ctx.fillRect(-L+2,-2,T.len-4,4);
+    ctx.fillStyle='rgba(14,22,30,.8)';rr(L-12,-W+2,9,T.wid-4,2);ctx.fill();
+    ctx.fillStyle='#e0332a';ctx.fillRect(-12,-2,12,4);ctx.fillRect(-8,-6,4,12);
+  }else if(type==='truck'){
+    ctx.fillStyle='#d8372b';rr(-L,-W,T.len,T.wid,5);ctx.fill();
+    ctx.fillStyle='#f3f3f3';ctx.fillRect(-L+3,-W+4,T.len-24,2.5);ctx.fillRect(-L+3,W-6.5,T.len-24,2.5);
+    ctx.fillStyle='#9fa7ae';ctx.fillRect(-L+4,-3,T.len-26,6);
+    ctx.fillStyle='#a8261d';rr(L-17,-W+1,16,T.wid-2,3);ctx.fill();
+    ctx.fillStyle='rgba(14,22,30,.8)';rr(L-8,-W+3,6,T.wid-6,2);ctx.fill();
+    ctx.fillStyle='#4aa3ff';ctx.beginPath();ctx.arc(-L+6,0,3.2,0,6.3);ctx.fill();
+  }else if(type==='ladder'){
+    ctx.fillStyle='#d8372b';rr(-L,-W,T.len,T.wid,5);ctx.fill();
+    ctx.fillStyle='#f3f3f3';ctx.fillRect(-L+3,-W+3,T.len-26,2.2);ctx.fillRect(-L+3,W-5.2,T.len-26,2.2);
+    ctx.fillStyle='#b8bfc6';ctx.fillRect(-L+4,-5,T.len-28,10);
+    ctx.strokeStyle='#6b737b';ctx.lineWidth=1;for(let q=-L+8;q<L-22;q+=5){ctx.beginPath();ctx.moveTo(q,-5);ctx.lineTo(q,5);ctx.stroke();}
+    ctx.fillStyle='#8a9097';ctx.beginPath();ctx.arc(-L+12,0,7,0,6.3);ctx.fill();
+    ctx.fillStyle='#a8261d';rr(L-17,-W+1,16,T.wid-2,3);ctx.fill();
+    ctx.fillStyle='rgba(14,22,30,.8)';rr(L-8,-W+3,6,T.wid-6,2);ctx.fill();
+  }else{
+    ctx.fillStyle='#c93020';rr(-L,-W,T.len,T.wid,5);ctx.fill();
+    ctx.fillStyle='#e9eef3';rr(-L+4,-W+3,T.len-26,T.wid-6,6);ctx.fill();
+    ctx.fillStyle='#ffd34d';ctx.fillRect(-L+4,-1.5,T.len-26,3);
+    ctx.fillStyle='#a8261d';rr(L-17,-W+1,16,T.wid-2,3);ctx.fill();
+    ctx.fillStyle='rgba(14,22,30,.8)';rr(L-8,-W+3,6,T.wid-6,2);ctx.fill();
+  }
+  {const cd=code||T.code;if(cd){
+    ctx.save();ctx.translate(-4,0);if(Math.cos(a)<0)ctx.rotate(Math.PI);
+    ctx.font='900 9.5px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.lineWidth=2.6;ctx.strokeStyle='rgba(0,0,0,.75)';ctx.strokeText(cd,0,.5);
+    ctx.fillStyle=type==='amb'?'#d62b21':'#fff';ctx.fillText(cd,0,.5);ctx.restore();}}
+  if(siren){
+    const on=Math.sin(tnow*14)>0;
+    ctx.fillStyle=on?'#ff3b30':'#2d7bff';ctx.fillRect(L-12,-W+2,3,T.wid/2-2);
+    ctx.fillStyle=on?'#2d7bff':'#ff3b30';ctx.fillRect(L-12,0,3,T.wid/2-2);
+    const g=ctx.createRadialGradient(L-10,0,2,L-10,0,34);g.addColorStop(0,on?'rgba(255,60,50,.4)':'rgba(60,120,255,.4)');g.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(L-10,0,34,0,6.3);ctx.fill();
+  }
+  ctx.restore();
+}
+function drawFF(x,y,ang,walk,col){
+  ctx.save();ctx.translate(x,y);ctx.rotate(ang||0);
+  const sw=Math.sin(walk||0)*2.2;
+  ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(1,2,6,4,0,0,6.3);ctx.fill();
+  ctx.fillStyle='#d77a1e';ctx.fillRect(-2,-5+sw*.3,5,3);ctx.fillRect(-2,2-sw*.3,5,3);
+  ctx.fillStyle='#e0702a';ctx.beginPath();ctx.ellipse(0,0,4,6,0,0,6.3);ctx.fill();
+  ctx.fillStyle=col||'#ffd34d';ctx.beginPath();ctx.arc(1,0,3.6,0,6.3);ctx.fill();
+  ctx.restore();
+}
+function drawNpcs(){
+  for(const u of npcs){
+    if(u.state==='wait')continue;
+    if(u.state==='park'&&u.nz){
+      const rear={x:u.x-Math.cos(u.a)*30,y:u.y-Math.sin(u.a)*30};
+      ctx.save();ctx.lineCap='round';ctx.strokeStyle='#e9eef3';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(rear.x,rear.y);ctx.lineTo(u.nz.x,u.nz.y);ctx.stroke();ctx.strokeStyle='#4a7fc0';ctx.lineWidth=3;ctx.stroke();ctx.restore();
+      drawFF(u.nz.x,u.nz.y,u.tg?Math.atan2(u.tg.cy-u.nz.y,u.tg.cx-u.nz.x):0,0,'#9ad0ff');
+      drawFF(u.nz.x-Math.sin(u.a)*8,u.nz.y+Math.cos(u.a)*8,0,0,'#9ad0ff');
+    }
+    drawVeh(u.type,u.x,u.y,u.a,true,u.code);
+  }
+}
+function ladTip(){
+  if(!lad)return null;
+  const sx=lad.x-Math.cos(lad.a)*20,sy=lad.y-Math.sin(lad.a)*20;
+  const dx=F.cx-sx,dy=F.cy-sy,d=Math.hypot(dx,dy)||1,g=clamp((lad.t-1.2)/1.8,0,1),len=Math.max(0,d-26)*g;
+  return{sx,sy,ex:sx+dx/d*len,ey:sy+dy/d*len,ux:dx/d,uy:dy/d,len,g};
+}
+function drawLadderRig(){
+  if(!lad)return;
+  const og=clamp(lad.t/1.2,0,1);
+  ctx.save();ctx.translate(lad.x,lad.y);ctx.rotate(lad.a);
+  ctx.fillStyle='#707880';
+  for(const [px,py] of[[-24,1],[-24,-1],[18,1],[18,-1]]){ctx.fillRect(px-3,py*(12.5+10*og)-(py>0?0:6)+(py>0?0:0),6,6*Math.max(.3,og)+0);}
+  ctx.restore();
+  const t=ladTip();if(!t||t.len<4)return;
+  ctx.save();ctx.lineCap='round';
+  const nx=-t.uy*3,ny=t.ux*3;
+  ctx.strokeStyle='#c8ced4';ctx.lineWidth=2.4;
+  ctx.beginPath();ctx.moveTo(t.sx+nx,t.sy+ny);ctx.lineTo(t.ex+nx,t.ey+ny);ctx.moveTo(t.sx-nx,t.sy-ny);ctx.lineTo(t.ex-nx,t.ey-ny);ctx.stroke();
+  ctx.lineWidth=1.2;ctx.strokeStyle='#8f979f';
+  for(let q=8;q<t.len;q+=9){ctx.beginPath();ctx.moveTo(t.sx+t.ux*q+nx,t.sy+t.uy*q+ny);ctx.lineTo(t.sx+t.ux*q-nx,t.sy+t.uy*q-ny);ctx.stroke();}
+  ctx.fillStyle='#ffd34d';ctx.fillRect(t.ex-5,t.ey-5,10,10);ctx.strokeStyle='#222';ctx.lineWidth=1;ctx.strokeRect(t.ex-5,t.ey-5,10,10);
+  ctx.restore();
+}
+const PK=460;let NIGHT=false;
+let WINQ=[],FURN=null;
+function h32(a,b,c,d){let h=(a*73856093)^(b*19349663)^(c*83492791)^(d*2654435761);h=Math.imul(h^(h>>>13),1274126177);return((h^(h>>>16))>>>0)%100;}
+const SHOPS={store:{n:'便利商店',c:'#1c9b78',t:'#fff'},laundry:{n:'洗衣店',c:'#2f86d6',t:'#fff'},food:{n:'餐廳',c:'#d9482b',t:'#fff'},drink:{n:'飲料店',c:'#f2b01e',t:'#2a1c05'},gas:{n:'加油站',c:'#e0372e',t:'#fff'}};
+let SIGNQ=[];
+function drawShop(b,rx,ry){
+  const S=SHOPS[b.shop],fa=b.fa||{x:0,y:1};
+  /* 騎樓遮陽棚：靠馬路那一側 */
+  const th=7;let ax,ay,aw,ah;
+  if(Math.abs(fa.x)>Math.abs(fa.y)){aw=th;ah=b.h;ax=fa.x>0?rx+b.w-th:rx;ay=ry;}else{aw=b.w;ah=th;ax=rx;ay=fa.y>0?ry+b.h-th:ry;}
+  const horiz=aw>ah,n=Math.max(2,Math.floor((horiz?aw:ah)/8));
+  for(let i=0;i<n;i++){ctx.fillStyle=i%2?'#f4f4f4':S.c;if(horiz)ctx.fillRect(ax+i*aw/n,ay,aw/n+.5,ah);else ctx.fillRect(ax,ay+i*ah/n,aw,ah/n+.5);}
+  if(b.shop==='gas'){
+    ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(rx+b.w*.12+4,ry+b.h*.52+4,b.w*.76,b.h*.34);
+    ctx.fillStyle='#f2f2f2';ctx.fillRect(rx+b.w*.12,ry+b.h*.52,b.w*.76,b.h*.34);
+    ctx.fillStyle=S.c;ctx.fillRect(rx+b.w*.12,ry+b.h*.52,b.w*.76,4);ctx.fillRect(rx+b.w*.12,ry+b.h*.86-4,b.w*.76,4);
+    ctx.fillStyle='#444';ctx.fillRect(rx+b.w*.3,ry+b.h*.62,5,10);ctx.fillRect(rx+b.w*.62,ry+b.h*.62,5,10);
+  }
+  ctx.font='800 11px '+FONT;if(!S.w)S.w=ctx.measureText(S.n).width;
+  const pw=Math.min(b.w-6,S.w+10),ph=15,px=rx+(b.w-pw)/2,py=ry+(b.shop==='gas'?4:b.h*.18);
+  ctx.fillStyle=S.c;rr(px,py,pw,ph,4);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.7)';ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle=S.t;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(S.n,px+pw/2,py+ph/2+.5);
+  if(NIGHT&&SIGNQ.length<80)SIGNQ.push([px,py,pw,ph,b.shop]);
+}
+function shade(hex,f){const n=parseInt(hex.slice(1),16);return'rgb('+Math.round(((n>>16)&255)*f)+','+Math.round(((n>>8)&255)*f)+','+Math.round((n&255)*f)+')';}
+function drawBldg0(b){
+  if(!b.ht)b.ht=24+((Math.abs(b.x*7+b.y*3))%17);
+  const k=b.ht/PK,cx=b.x+b.w/2,cy=b.y+b.h/2,ox=(cx-cam.x)*k,oy=(cy-cam.y)*k,rx=b.x+ox,ry=b.y+oy,fs=b.fs;
+  if(!b.wall)b.wall=shade(b.col,.6);
+  const sh=b.ht*.2+2;ctx.fillStyle='rgba(0,0,0,.34)';ctx.fillRect(b.x+sh,b.y+sh,b.w,b.h);
+  const bx=[b.x,b.x+b.w,b.x+b.w,b.x],by=[b.y,b.y,b.y+b.h,b.y+b.h],nr=[[0,-1],[1,0],[0,1],[-1,0]];
+  ctx.fillStyle=(fs&&fs.out)?'#26231f':b.wall;
+  for(let i=0;i<4;i++){
+    const a=i,c=(i+1)%4,mx_=(bx[a]+bx[c])/2,my_=(by[a]+by[c])/2;
+    if(nr[i][0]*(cam.x-mx_)+nr[i][1]*(cam.y-my_)<=0)continue;
+    ctx.beginPath();ctx.moveTo(bx[a],by[a]);ctx.lineTo(bx[c],by[c]);ctx.lineTo(bx[c]+ox,by[c]+oy);ctx.lineTo(bx[a]+ox,by[a]+oy);ctx.closePath();ctx.fill();
+    if(!b.wood&&!(fs&&(fs.out||fs.burning))){
+      const ex=bx[c]-bx[a],ey=by[c]-by[a],L=Math.hypot(ex,ey),nf=Math.max(2,Math.round(b.ht/11)),nc=Math.max(1,Math.floor(L/15)),litP=NIGHT?58:20;
+      const pl=new Path2D(),pd=new Path2D();
+      for(let f=0;f<nf;f++)for(let g=0;g<nc;g++){
+        const lit=h32(b.x|0,b.y|0,i*9+f,g)<litP,u0=(g+.2)/nc,u1=(g+.8)/nc,v0=(f+.2)/nf,v1=(f+.72)/nf;
+        const p0x=bx[a]+ex*u0+ox*v0,p0y=by[a]+ey*u0+oy*v0,p1x=bx[a]+ex*u1+ox*v0,p1y=by[a]+ey*u1+oy*v0,p2x=bx[a]+ex*u1+ox*v1,p2y=by[a]+ey*u1+oy*v1,p3x=bx[a]+ex*u0+ox*v1,p3y=by[a]+ey*u0+oy*v1;
+        const P=lit?pl:pd;P.moveTo(p0x,p0y);P.lineTo(p1x,p1y);P.lineTo(p2x,p2y);P.lineTo(p3x,p3y);P.closePath();
+        if(lit&&NIGHT&&WINQ.length<1800)WINQ.push([p0x,p0y,p1x,p1y,p2x,p2y,p3x,p3y]);
+      }
+      ctx.fillStyle=NIGHT?'#10161e':'#4d6479';ctx.fill(pd);ctx.fillStyle=NIGHT?'#ffd58a':'#f1d58a';ctx.fill(pl);
+      ctx.fillStyle=(fs&&fs.out)?'#26231f':b.wall;
+    }
+    if(b.tower){ctx.strokeStyle='rgba(180,220,255,.35)';ctx.lineWidth=1.2;for(let q=.15;q<1;q+=.14){ctx.beginPath();ctx.moveTo(bx[a]+(bx[c]-bx[a])*0+ox*q,by[a]+oy*q);ctx.lineTo(bx[c]+ox*q,by[c]+oy*q);ctx.stroke();}}
+  }
+  let col=b.col;
+  if(fs){if(fs.out)col='#3a3836';else if(fs.burning)col=Math.sin(tnow*8+b.x)>0?'#7a2e1e':'#5e2418';}
+  ctx.fillStyle=col;ctx.fillRect(rx,ry,b.w,b.h);
+  ctx.strokeStyle='rgba(0,0,0,.42)';ctx.lineWidth=1.5;ctx.strokeRect(rx,ry,b.w,b.h);
+  if(b.tower){ctx.strokeStyle='rgba(255,255,255,.35)';ctx.strokeRect(rx+10,ry+10,b.w-20,b.h-20);ctx.fillStyle='rgba(255,255,255,.25)';ctx.beginPath();ctx.arc(rx+b.w/2,ry+b.h/2,16,0,6.3);ctx.fill();}
+  else if(b.wood){ctx.strokeStyle='rgba(0,0,0,.28)';ctx.lineWidth=1;for(let q=6;q<b.w;q+=7){ctx.beginPath();ctx.moveTo(rx+q,ry);ctx.lineTo(rx+q,ry+b.h);ctx.stroke();}}
+  else{
+    if(!b.tank&&!b.ac&&h32(b.x|0,b.y|0,5,5)<35){ctx.fillStyle='#3f7a45';ctx.fillRect(rx+5,ry+5,Math.min(14,b.w*.3),6);ctx.fillRect(rx+5,ry+13,Math.min(14,b.w*.3),6);}
+    ctx.strokeStyle='rgba(255,255,255,.16)';ctx.lineWidth=1;ctx.strokeRect(rx+2,ry+2,b.w-4,b.h-4);
+    if(b.shop&&!(fs&&(fs.burning||fs.out)))drawShop(b,rx,ry);
+    if(b.tank&&!b.shop){ctx.fillStyle='#d9dde2';ctx.beginPath();ctx.arc(rx+b.w*.75,ry+b.h*.28,4.5,0,6.3);ctx.fill();}
+    if(b.ac&&!b.shop){ctx.fillStyle='#8d949c';ctx.fillRect(rx+4,ry+b.h-9,8,5);}
+  }
+  if(fs&&!fs.burning&&!fs.out){
+    if(fs.heat>4){ctx.fillStyle='rgba(255,110,30,'+Math.min(.62,fs.heat/100*.7)+')';ctx.fillRect(rx,ry,b.w,b.h);}
+    if(fs.wet>0){ctx.fillStyle='rgba(80,170,255,.3)';ctx.fillRect(rx,ry,b.w,b.h);}
+  }
+}
+function drawFire(){
+  if(!F)return;
+  for(const st of[F].concat(neigh)){
+    const b=st.b,k=(b.ht||20)/PK,cx=st.cx+(st.cx-cam.x)*k,cy=st.cy+(st.cy-cam.y)*k;
+    if(!st.burning){
+      if(!st.out&&st.heat>4){
+        ctx.fillStyle='rgba(10,16,24,.8)';ctx.fillRect(cx-14,cy-b.h/2-8,28,5);
+        ctx.fillStyle=st.heat>60?'#ff4d3a':'#ff9b3a';ctx.fillRect(cx-13,cy-b.h/2-7,26*Math.min(1,st.heat/100),3);
+        if(st.heat>55&&Math.sin(tnow*9)>0){ctx.fillStyle='#ff4d3a';ctx.font='900 13px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('!',cx,cy-b.h/2-16);}
+      }
+      continue;
+    }
+    const sz=Math.max(.4,st.hp/100)*Math.max(.85,Math.min(b.w,b.h)/50);
+    const lx=Math.cos(wind.a)*9*sz,ly=Math.sin(wind.a)*9*sz;
+    const g=ctx.createRadialGradient(cx,cy,6,cx,cy,90*sz+20);g.addColorStop(0,'rgba(255,140,40,.5)');g.addColorStop(1,'rgba(255,90,20,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,90*sz+20,0,6.3);ctx.fill();
+    const n=st.b.tower?10:7;
+    for(let i=0;i<n;i++){
+      const ph=tnow*7+i*1.7+cx*.01,ox=Math.sin(ph*.9+i)*b.w*.3*Math.min(1,sz),oy=Math.cos(ph*.7+i*2)*b.h*.28*Math.min(1,sz),r=(6+3.5*Math.sin(ph))*sz+3;
+      ctx.fillStyle=i%3===0?'#ffd34d':i%3===1?'#ff8a2c':'#ff4a1c';
+      ctx.beginPath();ctx.ellipse(cx+ox+lx,cy+oy+ly-r*.3,r*.7,r*1.15,Math.atan2(ly,lx)+1.57,0,6.3);ctx.fill();
+    }
+  }
+}
+function drawFx(){
+  for(const f of fx){
+    if(f.type==='s'){ctx.fillStyle='rgba(60,60,64,'+Math.min(.5,f.life*.3)+')';ctx.beginPath();ctx.arc(f.x,f.y,5+(2-f.life)*6,0,6.3);ctx.fill();}
+    else if(f.type==='w'){const pr=Math.min(1,1-f.life/(f.l0||.55)),lift=Math.sin(Math.PI*pr)*12,vl=Math.hypot(f.vx,f.vy)||1,tx=f.vx/vl*9,ty=f.vy/vl*9;ctx.fillStyle='rgba(0,0,0,.18)';ctx.beginPath();ctx.arc(f.x,f.y,1.6,0,6.3);ctx.fill();ctx.save();ctx.translate(0,-lift);ctx.strokeStyle='rgba(170,225,255,.9)';ctx.lineWidth=2.6;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(f.x-tx,f.y-ty);ctx.lineTo(f.x,f.y);ctx.stroke();ctx.fillStyle='rgba(235,248,255,.95)';ctx.beginPath();ctx.arc(f.x,f.y,1.8,0,6.3);ctx.fill();ctx.restore();}
+    else if(f.type==='m'){const t=f.life/f.l0;ctx.fillStyle='rgba(200,235,255,'+(.35*t)+')';ctx.beginPath();ctx.arc(f.x,f.y,4+(1-t)*10,0,6.3);ctx.fill();}
+    else if(f.type==='k'){const t=f.life/f.l0;ctx.fillStyle='rgba(38,38,44,'+(.32*Math.min(1,t*1.6)*Math.min(1,(1-t)*5+.2))+')';ctx.beginPath();ctx.arc(f.x,f.y,f.r+(1-t)*22,0,6.3);ctx.fill();}
+    else if(f.type==='e'){ctx.fillStyle='rgba(255,'+(150+Math.random()*80|0)+',60,'+Math.min(1,f.life*1.5)+')';ctx.fillRect(f.x-1.2,f.y-1.2,2.4,2.4);}
+    else if(f.type==='p'){ctx.fillStyle='rgba(255,200,90,'+f.life*2+')';ctx.fillRect(f.x-1.5,f.y-1.5,3,3);}
+    else if(f.type==='d'){const t=f.life/f.l0;ctx.fillStyle='rgba(176,164,146,'+(.38*Math.min(1,t*1.4))+')';ctx.beginPath();ctx.arc(f.x,f.y,f.r+(1-t)*26,0,6.3);ctx.fill();}
+    else if(f.type==='c'){ctx.save();ctx.translate(f.x,f.y);ctx.rotate(f.rot||0);ctx.globalAlpha=Math.min(1,f.life*2);ctx.fillStyle='#8c867c';ctx.fillRect(-f.s/2,-f.s/2,f.s,f.s);ctx.restore();}
+    else if(f.type==='r'){const t=1-f.life/.8;ctx.strokeStyle='rgba(255,220,120,'+(1-t)+')';ctx.lineWidth=3;ctx.beginPath();ctx.arc(f.x,f.y,20+t*320,0,6.3);ctx.stroke();}
+  }
+}
+function drawHose(){
+  const tr=park[0];if(!tr||MIS[G.mi].quake||MIS[G.mi].co||MIS[G.mi].ems)return;
+  ctx.save();ctx.lineCap='round';ctx.lineJoin='round';
+  const rear={x:tr.x-Math.cos(tr.a)*28,y:tr.y-Math.sin(tr.a)*28};
+  if(ff[0]&&(G.ph==='lay'||G.ph==='dry'||F.spray&&G.ph!=='pull'||true)){
+    ctx.strokeStyle='#e9eef3';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(rear.x,rear.y);ctx.lineTo(ff[0].x,ff[0].y);ctx.stroke();
+    ctx.strokeStyle='#4a7fc0';ctx.lineWidth=3;ctx.stroke();
+  }
+  /* 接水口 */
+  const pul=1+.2*Math.sin(tnow*6);
+  ctx.fillStyle='#4aa3ff';ctx.beginPath();ctx.arc(tr.x,tr.y,5,0,6.3);ctx.fill();
+  if(G.ph==='pull'){ctx.strokeStyle='#4aa3ff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(tr.x,tr.y,30*pul,0,6.3);ctx.stroke();}
+  if(supply.length>1){ctx.strokeStyle='#e9eef3';ctx.lineWidth=5;ctx.beginPath();supply.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.lineTo(tr.x,tr.y);ctx.stroke();ctx.strokeStyle='#4a7fc0';ctx.lineWidth=3;ctx.stroke();}
+  /* 供水水帶 */
+  if(trail.length&&(G.ph==='pull'||F.conn)){
+    ctx.strokeStyle='#e9eef3';ctx.lineWidth=5;ctx.beginPath();trail.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));if(PP)ctx.lineTo(PP.x,PP.y);ctx.stroke();
+    ctx.strokeStyle='#4a7fc0';ctx.lineWidth=3;ctx.stroke();
+  }
+  ctx.restore();
+}
+function drawHydrant(){
+  if(!hyd)return;
+  ctx.fillStyle='#d8372b';ctx.beginPath();ctx.arc(hyd.x,hyd.y,5.5,0,6.3);ctx.fill();
+  ctx.fillStyle='#fff';ctx.fillRect(hyd.x-2.5,hyd.y-1,5,2);
+}
+function drawVictim(){
+  if(MIS[G.mi].quake||MIS[G.mi].co||MIS[G.mi].ems)return;
+  if(!PT||PT.state==='done'||PT.state==='loaded'||!PT.on&&G.ph!=='d3')return;
+  ctx.save();ctx.translate(PT.x,PT.y);
+  ctx.fillStyle='#3b6fc0';ctx.beginPath();ctx.ellipse(0,0,8,4,0,0,6.3);ctx.fill();
+  ctx.fillStyle='#f1c9a0';ctx.beginPath();ctx.arc(-8,0,3.5,0,6.3);ctx.fill();
+  if(Math.sin(tnow*6)>0){ctx.fillStyle='#ff4d4d';ctx.beginPath();ctx.arc(0,-14,6,0,6.3);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 10px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('!',0,-14);}
+  ctx.restore();
+}
+function drawLoad(){
+  if(G.ph!=='load'||!load)return;
+  const t=clamp(load.t/3.2,0,1);
+  const n=sideNormal(load.a),sg=(PT.x-load.x)*n.x+(PT.y-load.y)*n.y>0?1:-1;
+  const door={x:load.x+n.x*sg*14,y:load.y+n.y*sg*14};
+  const p=t<.5?{x:PT.x+(door.x-PT.x)*(t*2),y:PT.y+(door.y-PT.y)*(t*2)}:door;
+  const ang=Math.atan2(door.y-PT.y,door.x-PT.x);
+  ctx.save();ctx.translate(p.x,p.y);ctx.rotate(ang);
+  ctx.fillStyle='#e9eef3';rr(-13,-4.5,26,9,2);ctx.fill();
+  ctx.fillStyle='#3b6fc0';ctx.beginPath();ctx.ellipse(0,0,8,3.5,0,0,6.3);ctx.fill();
+  ctx.restore();
+  drawFF(p.x+Math.cos(ang)*0-Math.sin(ang)*8,p.y+Math.sin(ang)*0+Math.cos(ang)*8,ang,t*20,'#fff');
+  drawFF(p.x+Math.sin(ang)*8,p.y-Math.cos(ang)*8,ang,t*20,'#fff');
+  ctx.fillStyle='rgba(10,16,24,.8)';rr(load.x-30,load.y-34,60,8,4);ctx.fill();ctx.fillStyle='#ff6b8a';rr(load.x-30,load.y-34,60*t,8,4);ctx.fill();
+}
+function drawBubbles(){
+  for(const c of cars){
+    if(!c.yl&&c.bub<=0)continue;
+    let txt=null,col;
+    if(c.stub&&!c.hk){txt='不讓！';col='#ff6b5e';}
+    else if(c.bub>0){txt='好啦～';col='#4cc38a';}
+    if(!txt)continue;
+    ctx.font='700 '+Math.round(12/cam.z)+'px '+FONT;
+    const w=ctx.measureText(txt).width+8/cam.z;
+    ctx.fillStyle='rgba(10,16,24,.88)';rr(c.x-w/2,c.y-28/cam.z,w,16/cam.z,5/cam.z);ctx.fill();
+    ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,c.x,c.y-20/cam.z);
+  }
+}
+let nc=null,nx=null;
+function drawNight(){
+  if(!MIS[G.mi].night)return;
+  const W=Math.round(vw*dpr),H=Math.round(vh*dpr);
+  if(!nc||nc.width!==W||nc.height!==H){nc=document.createElement('canvas');nc.width=W;nc.height=H;nx=nc.getContext('2d');}
+  nx.globalCompositeOperation='source-over';nx.setTransform(1,0,0,1,0,0);nx.clearRect(0,0,W,H);
+  nx.fillStyle='rgba(3,6,20,.66)';nx.fillRect(0,0,W,H);
+  nx.globalCompositeOperation='destination-out';nx.setTransform(dpr,0,0,dpr,0,0);
+  const z=cam.z,sx=x=>(x-cam.x)*z+vw/2,sy=y=>(y-cam.y)*z+vh/2;
+  const hole=(x,y,r,a)=>{const g=nx.createRadialGradient(sx(x),sy(y),0,sx(x),sy(y),r*z);g.addColorStop(0,'rgba(0,0,0,'+a+')');g.addColorStop(1,'rgba(0,0,0,0)');nx.fillStyle=g;nx.beginPath();nx.arc(sx(x),sy(y),r*z,0,6.3);nx.fill();};
+  const glows=[];
+  for(const st of[F].concat(neigh))if(st&&st.burning){const r=120+110*Math.max(.4,st.hp/100);hole(st.cx,st.cy,r,.95);glows.push([st.cx,st.cy,r]);}
+  if(V){hole(V.x,V.y,90,.9);hole(V.x+Math.cos(V.a)*95,V.y+Math.sin(V.a)*95,130,.95);}
+  for(const p of park)hole(p.x,p.y,85,.85);
+  for(const u of npcs)hole(u.x,u.y,80,.85);
+  if(PP)hole(PP.x,PP.y,70,.85);
+  for(const c of cars)hole(c.x,c.y,55,.7);
+  const g=goalNow();if(g)hole(g.x,g.y,110,.8);
+  if(hyd)hole(hyd.x,hyd.y,50,.8);
+  if(FURN){const rx0=cam.x-vw/2/z-60,rx1=cam.x+vw/2/z+60,ry0=cam.y-vh/2/z-60,ry1=cam.y+vh/2/z+60;
+    for(const f of FURN){if(f.t!=='lamp'||f.x<rx0||f.x>rx1||f.y<ry0||f.y>ry1)continue;const k=34/PK,lx=f.x+(f.x-cam.x)*k,ly=f.y+(f.y-cam.y)*k;hole(lx,ly,95,.72);glows.push([lx,ly,85,'255,200,120']);}}
+  ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(nc,0,0);ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle='rgba(255,214,140,.95)';
+  for(const w of WINQ){ctx.beginPath();for(let i=0;i<4;i++){const X=sx(w[i*2]),Y=sy(w[i*2+1]);i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);}ctx.closePath();ctx.fill();}
+  for(const q of SIGNQ){const S=SHOPS[q[4]],X=sx(q[0]),Y=sy(q[1]),w=q[2]*z,h=q[3]*z;ctx.fillStyle=S.c;rr(X,Y,w,h,4*z);ctx.fill();ctx.fillStyle=S.t;ctx.font='800 '+Math.round(11*z)+'px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(S.n,X+w/2,Y+h/2+.5);glows.push([q[0]+q[2]/2,q[1]+q[3]/2,48,'255,235,200']);}
+  ctx.save();ctx.globalCompositeOperation='lighter';
+  for(const q of glows){const X=sx(q[0]),Y=sy(q[1]),R=q[2]*z,gr=ctx.createRadialGradient(X,Y,0,X,Y,R);gr.addColorStop(0,'rgba('+(q[3]||'255,120,40')+','+(q[3]?.2:.28)+')');gr.addColorStop(1,'rgba('+(q[3]||'255,90,20')+',0)');ctx.fillStyle=gr;ctx.beginPath();ctx.arc(X,Y,R,0,6.3);ctx.fill();}
+  ctx.restore();
+}
+let tsA=null,tsB=null;
+function mkc(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c;}
+function tiltShift(){
+  const W=cv.width,H=cv.height,aw=Math.max(8,W>>2),ah=Math.max(8,H>>2),bw=Math.max(4,W>>3),bh=Math.max(4,H>>3);
+  if(!tsA||tsA.width!==aw||tsA.height!==ah){tsA=mkc(aw,ah);tsB=mkc(bw,bh);}
+  const a=tsA.getContext('2d'),b=tsB.getContext('2d');
+  a.imageSmoothingEnabled=true;b.imageSmoothingEnabled=true;
+  a.globalCompositeOperation='copy';a.drawImage(cv,0,0,aw,ah);
+  b.globalCompositeOperation='copy';b.drawImage(tsA,0,0,bw,bh);
+  ctx.setTransform(1,0,0,1,0,0);ctx.imageSmoothingEnabled=true;
+  if(NIGHT){ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=.3;ctx.drawImage(tsB,0,0,W,H);ctx.restore();}
+  b.globalCompositeOperation='destination-in';
+  const g=b.createLinearGradient(0,0,0,bh);g.addColorStop(0,'rgba(0,0,0,1)');g.addColorStop(.12,'rgba(0,0,0,.9)');g.addColorStop(.3,'rgba(0,0,0,0)');g.addColorStop(.66,'rgba(0,0,0,0)');g.addColorStop(.84,'rgba(0,0,0,.85)');g.addColorStop(1,'rgba(0,0,0,1)');
+  b.fillStyle=g;b.fillRect(0,0,bw,bh);
+  ctx.drawImage(tsB,0,0,W,H);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+function render(dt){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle='#161c22';ctx.fillRect(0,0,vw,vh);
+  const z=cam.z,sh=shake*5;
+  ctx.save();
+  const qs=G.qs||0,qm=RM?.4:1,jx=qs?(Math.sin(tnow*53)*6+Math.sin(tnow*91)*4)*qs*qm:0,jy=qs?(Math.cos(tnow*61)*5+Math.sin(tnow*77)*4)*qs*qm:0;
+  ctx.translate(vw/2+(Math.random()-.5)*sh+jx,vh/2+(Math.random()-.5)*sh+jy);if(qs&&!RM)ctx.rotate(Math.sin(tnow*47)*.012*qs);ctx.scale(z,z);ctx.translate(-cam.x,-cam.y);
+  const x0=cam.x-vw/2/z-40,x1=cam.x+vw/2/z+40,y0=cam.y-vh/2/z-40,y1=cam.y+vh/2/z+40;
+  drawWorld(x0,y0,x1,y1);
+  drawGoal();drawGps();drawHydrant();
+  /* 違停車 */
+  for(const c of ILL)if(c.x>x0&&c.x<x1&&c.y>y0&&c.y<y1)drawCar(c);
+  for(const b of blk)if(b.x>x0&&b.x<x1&&b.y>y0&&b.y<y1)drawCar(b);
+  drawFire();drawQuakeObjs();drawCoObjs();drawHaz();drawCones();
+  drawHose();
+  for(const c of cars)if(c.x>x0&&c.x<x1&&c.y>y0&&c.y<y1)drawCar(c);
+  for(const p of park)drawVeh(p.type,p.x,p.y,p.a,G.ph==='lay'||G.ph==='pull'||G.ph==='load'||G.ph==='fight'||G.ph==='ladder',p.code);
+  drawNpcs();drawLadderRig();
+  drawRes();drawVictim();drawLoad();
+  ff.forEach(f=>{if(!f.ctrl)drawFF(f.x,f.y,f.ang,f.walk);});
+  ff.forEach(f=>{});
+  if(PP)drawFF(PP.x,PP.y,PP.ang,PP.walk,G.ph==='fight'?'#ffd34d':'#fff');
+  if(V)drawVeh(V.type,V.x,V.y,V.a,true);
+  drawFx();drawBubbles();
+  ctx.restore();
+  drawNight();
+  drawRain();drawQuakeOverlay();
+  if(G.mode!=='quake')tiltShift();
+  drawLabels();
+  drawPointer();
+  drawMini();
+}
+function drawPointer(){
+  const g=goalNow()||(G.ph==='pull'&&park[0]);
+  const me=V||PP;if(!g||!me)return;
+  let tx=g.x,ty=g.y;
+  if(V&&gps){
+    for(let i=1;i<gps.length;i++){if(Math.hypot(gps[i][0]-V.x,gps[i][1]-V.y)>130){tx=gps[i][0];ty=gps[i][1];break;}}
+  }
+  const d=Math.hypot(g.x-me.x,g.y-me.y);
+  if(d<(g.r||30)+60)return;
+  const a=Math.atan2(ty-me.y,tx-me.x),cx=(me.x-cam.x)*cam.z+vw/2,cy=(me.y-cam.y)*cam.z+vh/2;
+  const px=cx+Math.cos(a)*88,py=cy+Math.sin(a)*88;
+  ctx.save();ctx.translate(px,py);ctx.rotate(a);
+  ctx.fillStyle='rgba(255,180,31,.95)';ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(14,0);ctx.lineTo(-8,-10);ctx.lineTo(-3,0);ctx.lineTo(-8,10);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+  let rem=0;
+  if(V&&gps){rem=Math.hypot(gps[1][0]-V.x,gps[1][1]-V.y);for(let i=1;i<gps.length-1;i++)rem+=Math.hypot(gps[i+1][0]-gps[i][0],gps[i+1][1]-gps[i][1]);}
+  else rem=d;
+  ctx.font='700 12px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';
+  const t=Math.round(rem*M_PER_PX/10)*10+' 公尺',w=ctx.measureText(t).width+10;
+  ctx.fillStyle='rgba(10,16,24,.8)';rr(px-w/2,py+16,w,18,6);ctx.fill();ctx.fillStyle='#ffb41f';ctx.fillText(t,px,py+25.5);
+}
+/* 小地圖 */
+const mmBase=document.createElement('canvas');mmBase.width=240;mmBase.height=172;
+(function(){
+  const g=mmBase.getContext('2d'),sx=240/WW,sy=172/WH;
+  g.fillStyle='#22352b';g.fillRect(0,0,240,172);
+  g.fillStyle='#2c353d';g.beginPath();URB.forEach((p,i)=>i?g.lineTo(p[0]*sx,p[1]*sy):g.moveTo(p[0]*sx,p[1]*sy));g.closePath();g.fill();
+  g.lineCap='round';
+  for(const n in RD){const r=RD[n];g.strokeStyle=r.kind==='main'?'#d9b94a':'#8d98a3';g.lineWidth=r.kind==='main'?3:1.8;g.beginPath();r.pts.forEach((p,i)=>i?g.lineTo(p[0]*sx,p[1]*sy):g.moveTo(p[0]*sx,p[1]*sy));g.stroke();}
+  for(const l of LM){g.fillStyle=l.id==='hp'?'#fff':l.id==='fs'?'#ff5a2c':'#c0a87a';g.fillRect(l.x0*sx,l.y0*sy,Math.max(3,l.w*sx),Math.max(3,l.h*sy));}
+  g.fillStyle='#e0332a';const h=LM.find(l=>l.id==='hp');g.fillRect(h.c[0]*sx-1,h.c[1]*sy-4,2,8);g.fillRect(h.c[0]*sx-4,h.c[1]*sy-1,8,2);
+})();
+function drawMini(){
+  const sx=240/WW,sy=172/WH;
+  mx.drawImage(mmBase,0,0);
+  const dot=(x,y,c,r)=>{mx.fillStyle=c;mx.beginPath();mx.arc(x*sx,y*sy,r,0,6.3);mx.fill();};
+  const g=goalNow();
+  if(g)dot(g.x,g.y,g.col,6);
+  if(F&&!F.out)dot(F.x,F.y,'#ff5a2c',4);
+  neigh.forEach(n=>{if(n.burning)dot(n.cx,n.cy,'#ff5a2c',3);});
+  npcs.forEach(u=>{if(u.state!=='wait')dot(u.x,u.y,'#9ad0ff',3.5);});
+  if(SAFE)dot(SAFE.x,SAFE.y,'#4cc38a',5);
+  RES.forEach(r=>{if(r.state!=='hurt')dot(r.x,r.y,r.state==='safe'?'#4cc38a':'#7ad0ff',3);});
+  if(G.blkInfo&&G.blkInfo.found){mx.strokeStyle='#ff4d4d';mx.lineWidth=2;mx.beginPath();mx.arc(G.blkInfo.x*sx,G.blkInfo.y*sy,6,0,6.3);mx.stroke();}
+  if(V&&gps){mx.strokeStyle='rgba(80,200,255,.9)';mx.lineWidth=2;mx.beginPath();mx.moveTo(V.x*sx,V.y*sy);for(let i=1;i<gps.length;i++)mx.lineTo(gps[i][0]*sx,gps[i][1]*sy);mx.stroke();}
+  const me=V||PP||park[park.length-1];
+  if(me)dot(me.x,me.y,'#fff',4.5);
+  mx.strokeStyle='rgba(255,255,255,.7)';mx.lineWidth=1;
+  mx.strokeRect((cam.x-vw/2/cam.z)*sx,(cam.y-vh/2/cam.z)*sy,vw/cam.z*sx,vh/cam.z*sy);
+}
+/* ---------- HUD ---------- */
+const STEP={
+  d1:'① 水箱車（土庫11）趕往火場，停進黃色圈',lay:'水箱車到場：消防員自動下車、佈水線、出水',
+  d2:'② 換開水庫車（土庫61），開進綠色圈佔消防栓',pull:'③ 控制消防員，拉水帶接到藍色接水口',
+  d5:'④ 換開雲梯車（土庫31），開進紫色圈',ladder:'雲梯車架設中…',
+  fight:'⑤ 控制消防員射水：先保護橘色警示的鄰棟，再滅火（按住「射水」）',
+  d3:'換開救護車（土庫91），開到粉紅圈傷患旁',load:'搶救傷患，擔架上車中…',d4:'傷患送醫院急診（藍色圈）'
+};
+const STEPC={d1:'① 土庫11 趕往現場，停進黃色圈',d3:'⑤ 換開救護車（土庫91），開到粉紅圈戶外集結區',load:'搶救昏迷民眾，擔架上車中…',d4:'⑥ 傷患送醫院急診（藍色圈）'};
+const STEPQ={d1:'① 土庫11 趕往倒塌建築，停進黃色圈',rescue:'② 控制消防員：靠近受困民眾（紅色驚嘆號）停留幾秒救出，再帶到粉紅傷患集結區',d3:'③ 換開救護車（土庫91），開到粉紅圈傷患集結區',load:'搶救傷患，擔架上車中…',d4:'④ 傷患送醫院急診（藍色圈）'};
+function bar(id,v,show){const r=$(id);r.hidden=!show;if(show)r.querySelector('i').style.width=clamp(v,0,100)+'%';}
+function hud(){
+  if(!G.s)return;
+  const t=Math.floor(G.s.t),tm=$('#timer');tm.textContent=Math.floor(t/60)+':'+String(t%60).padStart(2,'0');
+  $('#dispatch').textContent='派遣 '+(G.mi+1)+'／'+MIS.length;
+  $('#step').textContent=(MIS[G.mi].ems&&STEPE[G.ph])||(MIS[G.mi].co&&G.co&&(G.ph==='rescue'?COSTEP[G.co.step]:STEPC[G.ph]))||(MIS[G.mi].quake&&STEPQ[G.ph])||STEP[G.ph]||'';
+  {const M=MIS[G.mi],dn=['東','東南','南','西南','西','西北','北','東北'][((Math.round(wind.a/(Math.PI/4))%8)+8)%8];
+   $('#rWind').hidden=!!(M.quake||M.co||M.ems);$('#wa').style.transform='rotate('+wind.a+'rad)';$('#wt').textContent='風吹向'+dn;
+   $('#rLost').textContent=M.ems?('延誤 '+Math.round(G.emsDelay||0)+' 秒'):M.quake?('救出 '+VICS.filter(v=>v.state==='done'||(PT&&PT.on)).length+'／'+VICS.length):M.co?('一氧化碳 '+(G.co.step>0?Math.round(G.co.ppm)+' ppm':'未檢測')+'　救出 '+VICS.filter(v=>v.state==='done'||(PT&&PT.on)).length+'／'+VICS.length):'延燒 '+G.s.lost+'／'+M.maxLost+(RES.length?'　居民 '+RES.filter(r=>r.state==='safe').length+'／'+RES.length:'');}
+  bar('#rTank',F.tank,!(MIS[G.mi].quake||MIS[G.mi].co||MIS[G.mi].ems)&&(F.spray&&!F.conn||F.conn));
+  bar('#rFire',F.hp,F.spray);
+  bar('#rPat',PT?PT.hp:0,!!(PT&&PT.on&&PT.state!=='done'));
+  bar('#rHp',V?V.hp:0,!!V);
+  const hb=$('#rHp i');if(V)hb.style.background=V.hp>55?'var(--ok)':V.hp>25?'var(--amber)':'var(--bad)';
+  const tk=$('#rTank i');tk.style.background=F.conn?'#4cc38a':F.tank>35?'#4aa3ff':'var(--bad)';
+}
+/* ---------- 畫面流程 ---------- */
+const sheetEl=$('#sheet'),ovEl=$('#ov');
+function sheet(html){sheetEl.innerHTML=html;ovEl.hidden=false;sheetEl.scrollTop=0;sheetEl.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>act(b.dataset.a)));}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function menu(){
+  G.mode='menu';G.mi=0;loadMission(0);
+  sheet('<span class="sub">土庫消防隊　勤務模擬</span><h1>土庫救災大作戰</h1>'+
+    '<p>地圖依土庫鎮街道<b>示意</b>描繪（非精確測繪）。你要連續操作水箱車、水庫車、消防員、雲梯車和救護車，完成八件不同的任務（五件火警、一件強震搜救、一件冬季一氧化碳中毒、一件救護車資源宣導）。</p>'+
+    '<ul><li>每件先由民眾<b>撥 119 報案</b>，學會說清楚地點、人員和傷勢，再出勤</li><li><b>水箱車</b>先到火場，消防員自動下車佈水線出水；水箱的水會一直減少</li>'+
+    '<li>換開<b>水庫車</b>佔消防栓，再<b>控制消防員</b>拉水帶接到水箱車，接著<b>按住射水</b>滅火</li><li>火會順著<b>風向</b>延燒到鄰棟，鄰棟變橘色就要先射水保護；高樓要靠<b>雲梯車</b></li>'+
+    '<li>有人受傷時，換開<b>救護車</b>救人送醫院</li>'+
+    '<li>第 6 關是<b>強震</b>：先學「趴下、掩護、穩住」，再搜救受困民眾、救護車送醫</li>'+
+    '<li>第 7 關是<b>冬季一氧化碳中毒</b>：檢測、通風、關熱水器，再救出昏迷民眾</li>'+
+    '<li>第 8 關是<b>救護車使用常識</b>：到場評估發現只是輕症，學習哪些情況才該打 119</li>'+
+    '<li>紅燈時一般車會讓你，但有些車<b>不讓</b>（頭上會出現「不讓！」），按<b>鳴笛</b>它才會靠邊</li></ul>'+
+    (best?'<p>最高分：<b>'+best+'</b></p>':'')+
+    '<div class="btns"><button type="button" class="go" data-a="start">從第 1 關開始</button></div>'+
+    '<span class="sub">或自由選關</span><div class="pick">'+MIS.map((m,i)=>'<button type="button" data-a="pick'+i+'"><i>'+(i+1)+'</i>'+esc(m.name)+'</button>').join('')+'</div>');
+}
+/* ---------- 第六關：強震、建築倒塌、搜救 ---------- */
+const RM=(()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){return false;}})();
+const qp=$('#qpanel');
+const QSTEPS=[
+ {q:'地震劇烈搖晃！你站不穩，第一步要做什麼？',opts:[['趴下：雙手雙膝著地，降低重心，避免被搖倒',1,''],['站著不動，等搖完再說',0,'站著容易被搖倒、被掉落物打到，要先<b>趴下</b>降低重心。'],['衝向電梯或樓梯往外跑',0,'劇烈搖晃時<b>走不穩，也不能搭電梯</b>，衝出去更容易跌倒或被掉落物擊中。']]},
+ {q:'第二步：保護自己最重要的部位',opts:[['掩護：躲到堅固的桌子下，或用手臂護住頭頸',1,''],['躲在玻璃窗或高櫃旁邊',0,'玻璃會破裂、櫃子會倒，要<b>遠離窗戶和高櫃</b>。'],['跑到陽台上看外面情況',0,'陽台和外牆可能崩落，要<b>就近找堅固的掩護</b>，保護頭頸。']]},
+ {q:'第三步：搖晃還沒停',opts:[['穩住：抓緊桌腳，跟著桌子移動，搖晃停止前不要放手',1,''],['稍微小搖一下就放手衝出去',0,'搖晃可能忽大忽小，要<b>等搖晃完全停止</b>再行動。'],['拿出手機一直拍影片',0,'兩手要<b>抓穩掩護物、保護頭頸</b>，拍影片等安全了再說。']]}
+];
+function poseSvg(step){
+  const S='stroke="#f2f5f9" stroke-width="3.2" stroke-linecap="round" fill="none"';
+  let o='<svg viewBox="0 0 140 84" role="img" aria-label="'+['站立','趴下','掩護','穩住'][step]+'姿勢示意">';
+  o+='<line x1="6" y1="76" x2="134" y2="76" stroke="#3b4a5c" stroke-width="3"/>';
+  if(step===0){
+    o+='<circle cx="70" cy="20" r="8" fill="#f2f5f9"/><g '+S+'><line x1="70" y1="28" x2="70" y2="54"/><line x1="70" y1="34" x2="54" y2="46"/><line x1="70" y1="34" x2="86" y2="46"/><line x1="70" y1="54" x2="60" y2="76"/><line x1="70" y1="54" x2="80" y2="76"/></g>';
+    o+='<g stroke="#ffb41f" stroke-width="2.5" stroke-linecap="round" fill="none"><path d="M30 30 q-6 6 0 12 q6 6 0 12"/><path d="M110 30 q6 6 0 12 q-6 6 0 12"/></g>';
+  }else if(step===1){
+    o+='<circle cx="44" cy="52" r="7" fill="#f2f5f9"/><g '+S+'><line x1="52" y1="54" x2="98" y2="54"/><line x1="58" y1="54" x2="58" y2="76"/><line x1="94" y1="54" x2="94" y2="76"/><line x1="98" y1="54" x2="112" y2="76"/></g>';
+    o+='<g stroke="#4cc38a" stroke-width="2.5" stroke-linecap="round" fill="none"><path d="M70 30 l0 14 m-6 -6 l6 6 l6 -6"/></g>';
+  }else{
+    o+='<rect x="24" y="30" width="92" height="8" rx="2" fill="#8a6a48"/><g stroke="#8a6a48" stroke-width="5" stroke-linecap="round"><line x1="30" y1="38" x2="30" y2="76"/><line x1="110" y1="38" x2="110" y2="76"/></g>';
+    o+='<circle cx="56" cy="58" r="6.5" fill="#f2f5f9"/><g '+S+'><line x1="63" y1="60" x2="98" y2="60"/><line x1="66" y1="60" x2="66" y2="76"/><line x1="96" y1="60" x2="108" y2="76"/>';
+    o+=step===2?'<path d="M64 60 L50 50 L58 46"/>':'<path d="M64 60 L44 64 L32 56"/>';
+    o+='</g>';
+    if(step===3)o+='<g stroke="#ffb41f" stroke-width="2.2" stroke-linecap="round" fill="none"><path d="M16 44 q-5 5 0 10"/><path d="M124 44 q5 5 0 10"/></g>';
+  }
+  return o+'</svg>';
+}
+function qCam(){
+  const b=F.b,w=vw||400,h=vh||800,land=w>h*1.15;
+  cam.z=camBase()*1.15;
+  cam.x=b.x+b.w/2+(land?(w*.2)/cam.z:0);
+  cam.y=b.y+b.h/2+(land?0:(h*.25)/cam.z);
+}
+function quakeStart(){
+  G.mode='quake';G.qk={stage:'alert',t:0,step:0,wrong:0,ct:0,rt:0,vt:0,msg:'',opts:null};
+  G.qBonus=0;G.qs=0;G.qd=0;G.qc=0;G.qcrack=0;
+  inp.l=inp.r=inp.gas=inp.brk=inp.spray=0;fx=[];
+  document.body.classList.add('quake');ovEl.hidden=true;qp.hidden=true;
+  qCam();
+  $('#qalert').classList.add('show');
+  toast('你正在中正路上，手機突然響起警報…','warn',3000);
+  for(let i=0;i<5;i++)setTimeout(()=>beep(i%2?900:1250,.14,'square',.08),i*180);
+  buzz([200,100,200,100,300]);
+}
+function qRumble(q,dt){
+  q.rt-=dt;if(q.rt<=0){q.rt=.26;beep(46+Math.random()*20,.3,'sawtooth',.13);}
+  q.vt-=dt;if(q.vt<=0){q.vt=1.1;buzz(RM?[60]:[120,40,120,40,200]);}
+}
+function quakeUpdate(dt){
+  const q=G.qk;if(!q)return;
+  q.t+=dt;qCam();
+  for(let i=fx.length-1;i>=0;i--){const f=fx[i];f.life-=dt;if(f.life<=0){fx.splice(i,1);continue;}
+    if(f.vx!==undefined){f.x+=f.vx*dt;f.y+=f.vy*dt;if(f.type==='c'){f.vy+=260*dt;f.rot+=f.vr*dt;}}}
+  let qs=0;
+  if(q.stage==='alert'){if(q.t>=3.4){q.stage='shake';qShow();}}
+  else if(q.stage==='shake'){qs=(RM?.22:.5)+.12*Math.sin(q.t*3);qRumble(q,dt);}
+  else if(q.stage==='collapse'){
+    q.ct+=dt;const L=3.8,amp=RM?.3:.95,b=F.b,tr=b.tr||{x:0,y:1};
+    G.qc=Math.min(1,q.ct/L);
+    qs=q.ct<L?amp:Math.max(0,amp*(1-(q.ct-L)/2.4));
+    G.qd=q.ct<2.2?q.ct/2.2:Math.max(0,1-(q.ct-2.2)/7);
+    if(q.ct<L+.6){
+      const rx=b.x+b.w/2+tr.x*26,ry=b.y+b.h/2+tr.y*26;
+      if(Math.random()<dt*40)fx.push({type:'d',x:rx+(Math.random()-.5)*90,y:ry+(Math.random()-.5)*90,vx:(Math.random()-.5)*40,vy:(Math.random()-.5)*40-10,life:2.6,l0:2.6,r:14+Math.random()*14});
+      if(q.ct<L&&Math.random()<dt*24)fx.push({type:'c',x:b.x+Math.random()*b.w,y:b.y+Math.random()*b.h,vx:(Math.random()-.5)*110,vy:-70-Math.random()*70,life:1.1,l0:1.1,rot:0,vr:(Math.random()-.5)*10,s:3+Math.random()*4});
+    }
+    qRumble(q,dt);
+    if(q.ct>=L+2.6){q.stage='after';qs=0;qAfter();}
+  }else if(q.stage==='after'){G.qd=Math.max(0,G.qd-dt/8);}
+  G.qs=qs;
+}
+function qShow(){
+  const q=G.qk;if(!q.opts)q.opts=shuf(QSTEPS[q.step].opts);
+  const names=['趴下','掩護','穩住'];
+  qp.innerHTML='<span class="sub">保命三步驟　'+names.map((t,i)=>i<q.step?'✓'+t:i===q.step?'▶'+t:t).join('　')+'</span>'+poseSvg(q.step)+
+   '<h2>'+QSTEPS[q.step].q+'</h2><div class="pick">'+q.opts.map((o,i)=>'<button type="button" data-a="qa'+i+'">'+esc(o[0])+'</button>').join('')+'</div>'+
+   '<p class="lesson" '+(q.msg?'':'hidden')+'>'+q.msg+'</p>';
+  qp.hidden=false;qp.scrollTop=0;
+  qp.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>act(b.dataset.a)));
+}
+function qPick(i){
+  const q=G.qk;if(!q||q.stage!=='shake'||!q.opts)return;
+  const o=q.opts[i];if(!o)return;
+  if(!o[1]){q.wrong++;q.msg='<b>再想想：</b>'+o[2];beep(200,.2,'sawtooth',.08);qShow();return;}
+  beep(880,.12,'triangle',.09);q.msg='';q.opts=null;q.step++;
+  $('#qalert').classList.remove('show');
+  if(q.step===2)G.qcrack=1;
+  if(q.step>=3){
+    q.stage='collapse';q.ct=0;
+    qp.innerHTML='<span class="sub">保命三步驟　✓趴下　✓掩護　✓穩住</span>'+poseSvg(3)+'<h2>穩住！抓緊桌腳，等搖晃停止</h2><p class="lesson">牆壁出現裂縫了…你保持低姿勢、保護頭頸，不要亂動。</p>';
+    qp.hidden=false;
+  }else qShow();
+}
+function qAfter(){
+  const q=G.qk;G.qBonus=q.wrong===0?40:q.wrong<=2?20:0;
+  qp.innerHTML='<span class="sub">搖晃停止</span><h2>建築物倒塌了！</h2>'+
+   '<p>你完成了「趴下、掩護、穩住」，保護了自己。'+(G.qBonus?'（加 '+G.qBonus+' 分）':'')+'</p>'+
+   '<p class="lesson">地震時記住三步驟：<b>趴下</b>降低重心、<b>掩護</b>頭頸、<b>穩住</b>到搖晃停止。不要衝出去、不要搭電梯。</p>'+
+   '<p class="lesson">附近有建築物倒塌，有人被壓在瓦礫裡，要請專業的消防人員搜救。現在先撥 119 報案。</p>'+
+   '<div class="btns"><button type="button" class="go" data-a="qgo">撥打 119</button></div>';
+  qp.hidden=false;qp.scrollTop=0;
+  qp.querySelectorAll('[data-a]').forEach(b=>b.addEventListener('click',()=>act(b.dataset.a)));
+}
+function qGo(){
+  qp.hidden=true;document.body.classList.remove('quake');$('#qalert').classList.remove('show');
+  G.qkDone=1;G.qs=0;fx=[];G.callBonus=0;callStart();
+}
+function quakeQ(loc){
+  return [
+   {d:'119 受理台，請問發生什麼事？',opts:[
+     {t:'地震後有建築物倒塌，有人受困，需要消防車和救護車！',ok:1,say:'地震後建築物倒塌，有人受困，需要消防車和救護車！'},
+     {t:'剛剛地震好大，你們可以過來看看嗎？',why:'要<b>直接說清楚</b>：建築物倒塌、有人受困，受理員才能馬上派消防車和救護車。'},
+     {t:'先等一下，我再看看有沒有餘震。',why:'有人受困要<b>立刻報案</b>，每一分鐘都很重要。'}]},
+   {d:'請問倒塌的地點在哪裡？',opts:[
+     {t:'在'+loc+'；門牌我現在看一下講給你，附近有明顯的大目標。',ok:1,say:'在'+loc+'，門牌和附近明顯目標都說清楚。'},
+     {t:'就在前面那棟，你們過來就看得到。',why:'<b>地址要講清楚</b>（路名、門牌），沒有門牌就說附近明顯的大目標。'},
+     {t:'我不知道這是哪裡，你們自己找。',why:'先看路牌、門牌，或說出附近的學校、廟宇、店家等<b>明顯大目標</b>。'}]},
+   {d:'有人受困在裡面嗎？大概有幾個人？',opts:[
+     {t:'有人被壓在倒塌的建築旁，我看到大約三個人，請快來。',ok:1,say:'有人被壓在倒塌的建築旁，大約三個人。'},
+     {t:'沒有人受困，只是房子倒了。',why:'這件<b>確實有人受困</b>，要如實回報人數和位置，消防員才會優先搜救。'},
+     {t:'我自己進去搬開瓦礫，把人拉出來再回報你。',why:'<b>不要自己進入或搬動倒塌建築</b>！可能再次崩塌或發生餘震，請交給專業搜救人員。'}]},
+   {d:'有人受傷嗎？',opts:[
+     {t:'有人受傷，我說明人數和傷勢。',ok:1,say:'有人受傷，並說明人數和傷勢。'},
+     {t:'沒有人受傷。',why:'這件<b>有人受傷</b>，要說明，受理員才會同時派救護車。'},
+     {t:'這不重要，你們先來就好。',why:'傷者的資訊要說，才能一起派<b>救護車</b>。'}]},
+   {d:'好的，已派遣消防車和救護車。等待的時候你要做什麼？',opts:[
+     {t:'遠離倒塌的建築，到空曠安全處，注意餘震，並在路口指引救援車輛。',ok:1,say:'遠離倒塌建築到空曠處，注意餘震，並指引救援車輛。'},
+     {t:'靠近瓦礫，用手一塊一塊搬開救人。',why:'<b>不要徒手搬瓦礫</b>，可能造成二次崩塌，也可能傷到受困者。'},
+     {t:'回到附近的建築物裡拿東西。',why:'餘震可能再來，<b>不要進入受損的建築物</b>。'}]}
+  ];
+}
+const QRULES='<div class="rule"><b>趴下、掩護、穩住</b><span>搖晃時先<b>趴下</b>降低重心，躲到堅固桌下<b>掩護</b>頭頸，<b>穩住</b>到搖晃停止。不要衝出去、不要搭電梯。</span></div>'+
+ '<div class="rule"><b>受困時</b><span>保持冷靜、用布遮住口鼻，<b>敲擊管線或牆壁、吹哨子</b>讓救援人員聽到，避免大喊吸入灰塵。</span></div></div>';
+/* 倒塌建築繪製 */
+function mkRubble(b){
+  const r=rng(99),tr=b.tr||{x:0,y:1},cx=b.x+b.w/2+tr.x*26,cy=b.y+b.h/2+tr.y*26,COL=['#8c867c','#a8a196','#6f6a62','#b9b2a5','#5b5650','#c4b9a6'];
+  b.rub=[];b.bar=[];
+  for(let i=0;i<110;i++){
+    const a=r()*6.283,d=Math.sqrt(r())*54,big=i<8;
+    b.rub.push({x:cx+Math.cos(a)*d*1.15,y:cy+Math.sin(a)*d*.95,w:big?22+r()*12:4+r()*13,h:big?14+r()*8:3+r()*9,a:r()*3.14,s:r(),col:COL[(r()*COL.length)|0]});
+  }
+  for(let i=0;i<14;i++){const a=r()*6.283,d=Math.sqrt(r())*48;b.bar.push({x:cx+Math.cos(a)*d,y:cy+Math.sin(a)*d,l:10+r()*16,a:r()*3.14,s:r()});}
+  b.rc={x:cx,y:cy};
+}
+function drawBldg(b){
+  if(!b.qk||!(G.qc>0||G.qcrack)){drawBldg0(b);return;}
+  const c=G.qc,e=c*c*(3-2*c);
+  if(!b.rub)mkRubble(b);
+  if(c<.82){
+    b.ht=70*(1-Math.min(1,e/.82))+6;
+    ctx.save();ctx.translate((Math.random()-.5)*5*(1-c),0);drawBldg0(b);
+    if(G.qcrack&&c<.05){
+      const k=b.ht/PK,rx=b.x+(b.x+b.w/2-cam.x)*k,ry=b.y+(b.y+b.h/2-cam.y)*k;
+      ctx.strokeStyle='#1d1b19';ctx.lineWidth=2.2;ctx.lineJoin='round';ctx.beginPath();
+      ctx.moveTo(rx+b.w*.2,ry);ctx.lineTo(rx+b.w*.3,ry+b.h*.25);ctx.lineTo(rx+b.w*.22,ry+b.h*.45);ctx.lineTo(rx+b.w*.4,ry+b.h*.7);ctx.lineTo(rx+b.w*.35,ry+b.h);
+      ctx.moveTo(rx+b.w*.75,ry+b.h*.15);ctx.lineTo(rx+b.w*.62,ry+b.h*.4);ctx.lineTo(rx+b.w*.7,ry+b.h*.62);ctx.stroke();
+    }
+    ctx.restore();
+  }else{b.ht=6;ctx.fillStyle='#4a4640';ctx.fillRect(b.x,b.y,b.w,b.h);}
+  const rc=b.rc;
+  ctx.fillStyle='rgba(0,0,0,'+(.26*Math.min(1,c*2))+')';ctx.beginPath();ctx.ellipse(rc.x,rc.y,66,56,0,0,6.3);ctx.fill();
+  for(const p of b.rub){
+    if(c*1.15<p.s*.9)continue;
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.a);ctx.fillStyle=p.col;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+    ctx.strokeStyle='rgba(0,0,0,.35)';ctx.lineWidth=1;ctx.strokeRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore();
+  }
+  ctx.strokeStyle='#4a3a30';ctx.lineWidth=1.6;ctx.beginPath();
+  for(const q of b.bar){if(c*1.15<q.s*.9)continue;ctx.moveTo(q.x,q.y);ctx.lineTo(q.x+Math.cos(q.a)*q.l,q.y+Math.sin(q.a)*q.l);}
+  ctx.stroke();
+  if(G.qd>.02){const g=ctx.createRadialGradient(rc.x,rc.y,8,rc.x,rc.y,90);g.addColorStop(0,'rgba(190,178,160,'+(.5*G.qd)+')');g.addColorStop(1,'rgba(190,178,160,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(rc.x,rc.y,90,0,6.3);ctx.fill();}
+}
+function drawQuakeOverlay(){
+  if(MIS[G.mi].co){ctx.fillStyle='rgba(90,130,200,.10)';ctx.fillRect(0,0,vw,vh);}
+  if((G.qd||0)<=.02)return;
+  ctx.fillStyle='rgba(150,135,115,'+(.2*G.qd)+')';ctx.fillRect(0,0,vw,vh);
+}
+/* 搜救 */
+function startRescue(){
+  const sp=snapPark(V,F.x,F.y);park.push({type:'truck',...sp});
+  G.s.tArr=G.s.t;V=null;G.ph='rescue';
+  const n=sideNormal(sp.a),sg=(F.x-sp.x)*n.x+(F.y-sp.y)*n.y>0?1:-1;
+  PP={x:sp.x+n.x*sg*(VT.truck.wid/2+16),y:sp.y+n.y*sg*(VT.truck.wid/2+16),ang:0,walk:0};
+  inp.l=inp.r=inp.gas=inp.brk=0;setModeUI();camSnap();
+  toast(MIS[G.mi].co?'土庫11 到場！消防員配戴空氣呼吸器：先在門口檢測，不要直接衝進去':'土庫11 到場！控制消防員靠近受困民眾（紅色驚嘆號），停留一會兒就能救出','warn',4400);
+  beep(660,.15,'triangle',.1);
+}
+function rescueGoal(){
+  if(!PP)return null;
+  if(MIS[G.mi].co&&G.co&&G.co.step<3)return coGoal();
+  let b=null,bd=1e9;
+  for(const v of VICS)if(v.state==='trap'){const d=Math.hypot(v.x-PP.x,v.y-PP.y);if(d<bd){bd=d;b=v;}}
+  if(b)return{x:b.x,y:b.y,r:34,col:'#ff6b8a'};
+  return PT?{x:PT.x,y:PT.y,r:40,col:'#ff6b8a'}:null;
+}
+function rescueUpdate(dt){
+  if(MIS[G.mi].co)coTasks(dt);
+  const h=PP.hist||(PP.hist=[]),l=h[h.length-1];
+  if(!l||Math.hypot(PP.x-l[0],PP.y-l[1])>7){h.push([PP.x,PP.y]);if(h.length>240)h.shift();}
+  let k=0;
+  for(const v of VICS){
+    if(v.state==='trap'){
+      const d=Math.hypot(PP.x-v.x,PP.y-v.y);
+      const gate=!MIS[G.mi].co||G.co.step>=3;
+      if(d<34&&!gate&&G.co.wt<=0){G.co.wt=3;G.co.warn++;toast('一氧化碳濃度還太高！先檢測、開窗通風、關熱水器，再搬人','bad',2600);beep(200,.2,'sawtooth',.08);}
+      if(d<34&&G.stun<=0&&gate){v.prog+=dt/3.6;if(Math.random()<dt*10)fx.push({type:'d',x:v.x+(Math.random()-.5)*16,y:v.y+(Math.random()-.5)*16,vx:(Math.random()-.5)*20,vy:(Math.random()-.5)*20,life:1,l0:1,r:5+Math.random()*4});}
+      else v.prog=Math.max(0,v.prog-dt*.4);
+      if(v.prog>=1){v.state='free';v.prog=1;beep(880,.15,'triangle',.1);toast('救出一位民眾！帶他到粉紅傷患集結區','',2200);}
+    }else if(v.state==='free'){
+      k++;let tg=h[Math.max(0,h.length-1-6*k)]||[PP.x,PP.y];
+      if(PT&&Math.hypot(PP.x-PT.x,PP.y-PT.y)<90)tg=[PT.x+Math.cos(k*2.1)*16,PT.y+Math.sin(k*2.1)*16];
+      const dx=tg[0]-v.x,dy=tg[1]-v.y,d=Math.hypot(dx,dy);
+      if(d>4){const st=Math.min(d,88*dt);v.x+=dx/d*st;v.y+=dy/d*st;v.ang=Math.atan2(dy,dx);v.walk+=dt*10;}
+      if(PT&&Math.hypot(v.x-PT.x,v.y-PT.y)<46){v.state='done';beep(880,.2,'triangle',.1);toast('傷患已送到集結區','',1600);}
+    }
+  }
+  const n=VICS.filter(v=>v.state==='done').length;G.s.rescued=n;
+  if(n===VICS.length&&VICS.length){
+    if(MIS[G.mi].co)G.coBonus=G.co.warn===0?40:G.co.warn<=2?20:0;
+    PT.on=true;haz=null;G.ph='d3';PP=null;spawnVeh('amb');setModeUI();camSnap();gps=null;gpsT=0;
+    toast('全部救出！換開救護車（土庫91）送醫','warn',3400);
+  }
+}
+function quakeHaz(dt){
+  const b=F.b,tr=b.tr||{x:0,y:1};
+  if(haz){
+    G.qs=Math.max(G.qs||0,.3);
+    haz.t-=dt;
+    if(haz.t<=0){
+      const d=Math.hypot(PP.x-haz.x,PP.y-haz.y);
+      G.qs=.9;shake=1;
+      if(d<haz.r){
+        G.s.ffHit++;G.stun=1.6;buzz(120);beep(150,.4,'sawtooth',.14);
+        toast('消防員被落石波及！','bad',2600);
+        const kx=(PP.x-haz.x)/(d||1),ky=(PP.y-haz.y)/(d||1);
+        for(let q=60;q>=10;q-=10){const nx=PP.x+kx*q,ny=PP.y+ky*q;if(sd(nx,ny)>=-14){PP.x=nx;PP.y=ny;break;}}
+      }else{G.s.ffDodge++;toast('成功避開落石！','',1600);beep(880,.15,'triangle',.08);}
+      for(let i=0;i<14;i++)fx.push({type:'c',x:haz.x+(Math.random()-.5)*haz.r,y:haz.y+(Math.random()-.5)*haz.r,vx:(Math.random()-.5)*80,vy:(Math.random()-.5)*80,life:.8,l0:.8,rot:0,vr:6,s:3+Math.random()*3});
+      haz=null;G.hazT=12+Math.random()*8;
+    }
+    return;
+  }
+  G.hazT-=dt;
+  if(G.hazN<3&&G.hazT<=0&&VICS.some(v=>v.state==='trap')){
+    haz={k:'quake',x:b.x+b.w/2+tr.x*34,y:b.y+b.h/2+tr.y*34,r:95,t:4.5,t0:4.5};G.hazN++;
+    toast('⚠ 餘震！建築碎片可能掉落，消防員快退出紅色範圍！','bad',3200);buzz(80);
+    beep(300,.18,'square',.1);setTimeout(()=>beep(300,.18,'square',.1),240);
+  }
+}
+function drawQuakeObjs(){
+  if(!MIS[G.mi].quake)return;
+  if(PT&&(G.ph==='rescue'||G.ph==='d3')&&PT.state!=='loaded'){
+    const pul=1+.05*Math.sin(tnow*4);
+    ctx.save();ctx.strokeStyle='#ff6b8a';ctx.lineWidth=3;ctx.setLineDash([8,7]);ctx.beginPath();ctx.arc(PT.x,PT.y,38*pul,0,6.3);ctx.stroke();ctx.setLineDash([]);
+    ctx.globalAlpha=.14;ctx.fillStyle='#ff6b8a';ctx.beginPath();ctx.arc(PT.x,PT.y,38,0,6.3);ctx.fill();ctx.globalAlpha=1;
+    ctx.fillStyle='#ff6b8a';ctx.font='800 '+Math.round(12/cam.z)+'px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('傷患集結區',PT.x,PT.y-50);ctx.restore();
+  }
+  VICS.forEach((v,i)=>{
+    if(v.state==='trap'){
+      ctx.save();ctx.translate(v.x,v.y);
+      ctx.fillStyle='#3b6fc0';ctx.beginPath();ctx.ellipse(2,0,8,4,0,0,6.3);ctx.fill();
+      ctx.fillStyle='#7a746a';rr(-4,-5,12,10,2);ctx.fill();
+      ctx.fillStyle='#f1c9a0';ctx.beginPath();ctx.arc(-9,0,3.5,0,6.3);ctx.fill();
+      ctx.strokeStyle='#f1c9a0';ctx.lineWidth=2;ctx.lineCap='round';ctx.beginPath();ctx.moveTo(-8,-2);ctx.lineTo(-12,-8+Math.sin(tnow*8+i)*3);ctx.stroke();
+      if(Math.sin(tnow*6+i)>0){ctx.fillStyle='#ff4d4d';ctx.beginPath();ctx.arc(0,-17,6,0,6.3);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 10px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('!',0,-17);}
+      if(v.prog>0){ctx.strokeStyle='#4cc38a';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,18,-1.5708,-1.5708+6.283*Math.min(1,v.prog));ctx.stroke();}
+      ctx.restore();
+    }else if(v.state==='free'){drawFF(v.x,v.y,v.ang,v.walk,'#7ad0ff');}
+    else if(v.state==='done'&&PT&&PT.state!=='loaded'&&G.ph!=='load'&&G.ph!=='d4'){
+      const o=[[-14,-6],[0,8],[14,-4]][i%3];
+      ctx.save();ctx.translate(PT.x+o[0],PT.y+o[1]);ctx.fillStyle='#3b6fc0';ctx.beginPath();ctx.ellipse(0,0,8,4,0,0,6.3);ctx.fill();ctx.fillStyle='#f1c9a0';ctx.beginPath();ctx.arc(-8,0,3.5,0,6.3);ctx.fill();ctx.restore();
+    }
+  });
+}
+
+/* CO */
+/* ---------- 第七關：冬季一氧化碳中毒 ---------- */
+const COSTEP=['① 開門前先在門口用氣體偵測器檢測（站在黃色圈內幾秒）','② 到兩扇窗邊開窗通風（依序站進圈內），降低室內一氧化碳','③ 到熱水器旁關閉熱水器（切斷來源）','④ 濃度降低了：靠近昏迷民眾救出，帶到粉紅戶外集結區'];
+function coInit(at,side,rd){
+  const mk=(k,ds,dur)=>{const p=at(ds),nv=sideNormal(p.a);return{k,x:p.x+nv.x*side*(rd.w/2+6),y:p.y+nv.y*side*(rd.w/2+6),dur,prog:0,done:false};};
+  G.co={step:0,ppm:0,warn:0,wt:0,tasks:[mk('door',0,3),mk('win',-38,3.2),mk('win',38,3.2),mk('heater',76,2.4)]};
+}
+function coTasks(dt){
+  const c=G.co,T=c.tasks;
+  c.wt-=dt;
+  let cur=[];
+  if(c.step===0)cur=[T[0]];else if(c.step===1)cur=[T[1],T[2]].filter(t=>!t.done);else if(c.step===2)cur=[T[3]];
+  for(const t of cur){
+    const d=Math.hypot(PP.x-t.x,PP.y-t.y);
+    if(d<25&&G.stun<=0)t.prog=Math.min(1,t.prog+dt/t.dur);else t.prog=Math.max(0,t.prog-dt*.5);
+    if(t.prog>=1&&!t.done){
+      t.done=true;beep(880,.15,'triangle',.1);
+      if(t.k==='door'){c.step=1;c.ppm=420;toast('檢測結果：一氧化碳 420 ppm，濃度非常高！先開窗通風，不要直接衝進去','bad',3600);buzz(80);}
+      else if(t.k==='win'){toast('窗戶打開了，新鮮空氣進來','',1800);if(T[1].done&&T[2].done){c.step=2;toast('濃度下降中！接著去關掉熱水器，切斷來源','warn',3200);}}
+      else if(t.k==='heater'){c.step=3;toast('熱水器關閉！濃度降低了，可以搬出昏迷民眾','warn',3400);}
+    }
+  }
+  if(c.step>=1){
+    const w=(T[1].done?1:T[1].prog)+(T[2].done?1:T[2].prog);
+    const target=420-200*w-(c.step>=3?0:0);
+    c.ppm=c.step>=3?Math.max(20,c.ppm-30*dt):Math.min(c.ppm,Math.max(target,20));
+  }
+}
+function coGoal(){
+  const c=G.co,T=c.tasks;
+  if(c.step===0)return{x:T[0].x,y:T[0].y,r:25,col:'#ffb41f'};
+  if(c.step===1){let b=null,bd=1e9;for(const t of[T[1],T[2]])if(!t.done){const d=Math.hypot(t.x-PP.x,t.y-PP.y);if(d<bd){bd=d;b=t;}}return b?{x:b.x,y:b.y,r:25,col:'#7fd0ff'}:null;}
+  if(c.step===2)return{x:T[3].x,y:T[3].y,r:25,col:'#ff7a1a'};
+  return null;
+}
+function drawCoObjs(){
+  const M=MIS[G.mi];if(!M.co||!G.co)return;
+  const c=G.co,b=F.b,bx=b.x+b.w/2,by=b.y+b.h/2;
+  /* 氣體雲 */
+  const al=c.step===0?.42:Math.min(.5,c.ppm/420*.5);
+  if(al>.02){
+    const g=ctx.createRadialGradient(bx,by,6,bx,by,78);g.addColorStop(0,'rgba(170,120,200,'+al+')');g.addColorStop(1,'rgba(170,120,200,0)');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(bx,by,78,0,6.3);ctx.fill();
+    ctx.strokeStyle='rgba(215,190,235,'+al*.9+')';ctx.lineWidth=2;ctx.beginPath();
+    for(let i=0;i<4;i++){const ph=tnow*1.4+i*1.7,rx=bx+Math.cos(ph)*(24+i*8),ry=by+Math.sin(ph*1.3)*(18+i*6);ctx.moveTo(rx-8,ry);ctx.quadraticCurveTo(rx,ry-6,rx+8,ry);}
+    ctx.stroke();
+  }
+  /* 讀數看板 */
+  {const ppm=c.step>0?Math.round(c.ppm):null,col=ppm===null?'#9db0c4':ppm>200?'#ff5a4d':ppm>50?'#ffb41f':'#4cc38a';
+   const txt=ppm===null?'CO ？？？':'CO '+ppm+' ppm';ctx.font='800 '+Math.round(12/cam.z)+'px '+FONT;
+   const w=ctx.measureText(txt).width+14/cam.z,h=18/cam.z,x=bx-w/2,y=by-b.h/2-34;
+   ctx.fillStyle='rgba(10,16,24,.88)';rr(x,y,w,h,5/cam.z);ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=1.5/cam.z;ctx.stroke();
+   ctx.fillStyle=col;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(txt,bx,y+h/2+.5);}
+  /* 任務點 */
+  for(const t of c.tasks){
+    ctx.save();ctx.translate(t.x,t.y);
+    if(t.k==='door'){ctx.fillStyle=t.done?'#4a7a5a':'#8a5a34';ctx.fillRect(-6,-9,12,16);ctx.fillStyle='#e0c27a';ctx.fillRect(2,-1,2,2.5);}
+    else if(t.k==='win'){ctx.fillStyle=t.done?'#bfe6ff':'#5a7a96';ctx.fillRect(-9,-6,18,12);ctx.strokeStyle='#d8e4ee';ctx.lineWidth=1.5;ctx.strokeRect(-9,-6,18,12);ctx.beginPath();ctx.moveTo(0,-6);ctx.lineTo(0,6);ctx.stroke();
+      if(t.done){ctx.strokeStyle='rgba(235,248,255,.8)';ctx.lineWidth=1.6;ctx.beginPath();for(let i=0;i<2;i++){const o=(tnow*18+i*10)%18;ctx.moveTo(-12+o,-3+i*6);ctx.lineTo(-6+o,-3+i*6);}ctx.stroke();}}
+    else{ctx.fillStyle='#e9e4da';rr(-7,-10,14,20,2);ctx.fill();ctx.strokeStyle='#8a8f96';ctx.lineWidth=1;ctx.stroke();ctx.fillStyle=t.done?'#4cc38a':'#e0372e';ctx.beginPath();ctx.arc(0,-3,3,0,6.3);ctx.fill();ctx.fillStyle='#8a8f96';ctx.fillRect(-2,10,4,6);
+      if(!t.done){ctx.fillStyle='#ffd34d';ctx.beginPath();ctx.ellipse(0,5,2.2,3.2+Math.sin(tnow*12)*.8,0,0,6.3);ctx.fill();}}
+    ctx.fillStyle='#f2f5f9';ctx.font='800 '+Math.round(10/cam.z)+'px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(t.k==='door'?'門口檢測':t.k==='win'?'窗戶':'熱水器',0,-18);
+    if(t.prog>0&&!t.done){ctx.strokeStyle='#4cc38a';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,20,-1.5708,-1.5708+6.283*t.prog);ctx.stroke();}
+    ctx.restore();
+  }
+  /* 傷患集結區與昏迷民眾 */
+  if(PT&&(G.ph==='rescue'||G.ph==='d3')&&PT.state!=='loaded'){
+    const pul=1+.05*Math.sin(tnow*4);
+    ctx.save();ctx.strokeStyle='#ff6b8a';ctx.lineWidth=3;ctx.setLineDash([8,7]);ctx.beginPath();ctx.arc(PT.x,PT.y,38*pul,0,6.3);ctx.stroke();ctx.setLineDash([]);
+    ctx.globalAlpha=.14;ctx.fillStyle='#ff6b8a';ctx.beginPath();ctx.arc(PT.x,PT.y,38,0,6.3);ctx.fill();ctx.globalAlpha=1;
+    ctx.fillStyle='#ff6b8a';ctx.font='800 '+Math.round(12/cam.z)+'px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('戶外通風處',PT.x,PT.y-50);ctx.restore();
+  }
+  VICS.forEach((v,i)=>{
+    if(v.state==='trap'){
+      ctx.save();ctx.translate(v.x,v.y);
+      ctx.fillStyle='#3b6fc0';ctx.beginPath();ctx.ellipse(2,0,9,4,0,0,6.3);ctx.fill();ctx.fillStyle='#f1c9a0';ctx.beginPath();ctx.arc(-9,0,3.5,0,6.3);ctx.fill();
+      ctx.fillStyle='#cfe3f5';ctx.font='800 '+Math.round(10/cam.z)+'px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('Zzz',-4,-12);
+      if(Math.sin(tnow*6+i)>0){ctx.fillStyle='#ff4d4d';ctx.beginPath();ctx.arc(8,-17,6,0,6.3);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 10px '+FONT;ctx.fillText('!',8,-17);}
+      if(v.prog>0){ctx.strokeStyle='#4cc38a';ctx.lineWidth=4;ctx.beginPath();ctx.arc(0,0,18,-1.5708,-1.5708+6.283*Math.min(1,v.prog));ctx.stroke();}
+      ctx.restore();
+    }else if(v.state==='free'){drawFF(v.x,v.y,v.ang,v.walk,'#7ad0ff');}
+    else if(v.state==='done'&&PT&&PT.state!=='loaded'&&G.ph!=='load'&&G.ph!=='d4'){
+      const o=[[-14,-6],[0,8],[14,-4]][i%3];
+      ctx.save();ctx.translate(PT.x+o[0],PT.y+o[1]);ctx.fillStyle='#3b6fc0';ctx.beginPath();ctx.ellipse(0,0,8,4,0,0,6.3);ctx.fill();ctx.fillStyle='#f1c9a0';ctx.beginPath();ctx.arc(-8,0,3.5,0,6.3);ctx.fill();ctx.restore();
+    }
+  });
+}
+const CORULES='<div class="rule"><b>冬天也要通風</b><span>使用瓦斯熱水器、爐具時，門窗要留<b>通風口</b>，不要為了保暖全部緊閉。洗澡時覺得<b>頭暈、頭痛、想吐</b>，馬上開窗、離開，到戶外呼吸新鮮空氣。</span></div>'+
+ '<div class="rule"><b>熱水器怎麼裝</b><span>瓦斯熱水器要裝在<b>室外或通風良好處</b>，不要裝在浴室內；選用<b>強制排氣型或屋外型</b>，排氣管接到室外並保持暢通，請<b>合格業者安裝</b>、定期檢修。</span></div></div>';
+function coQ(loc){
+  return [
+   {d:'119 受理台，請問發生什麼事？',opts:[
+     {t:'家人洗完澡昏倒，我們頭暈想吐，懷疑一氧化碳中毒，需要救護車和消防車！',ok:1,say:'家人洗完澡昏倒，我們頭暈想吐，懷疑一氧化碳中毒，需要救護車和消防車！'},
+     {t:'家裡有點怪怪的，你們可以過來看看嗎？',why:'要<b>直接說清楚</b>：有人昏迷、懷疑一氧化碳中毒，受理員才能馬上派救護車和消防車。'},
+     {t:'先等一下，我睡一下再看看有沒有好一點。',why:'頭暈、想睡可能是中毒徵兆，要<b>立刻報案</b>，也要先到戶外呼吸新鮮空氣。'}]},
+   {d:'請問地點在哪裡？',opts:[
+     {t:'在'+loc+'；門牌和附近明顯的大目標我說清楚。',ok:1,say:'在'+loc+'，門牌和附近明顯目標都說清楚。'},
+     {t:'就在前面巷子裡，你們過來就找到了。',why:'<b>地址要講清楚</b>（路名、門牌、樓層），沒有門牌就說附近明顯的大目標。'},
+     {t:'我頭很暈，不知道這是哪裡。',why:'先看路牌、門牌，或說出附近的店家、學校等<b>明顯大目標</b>，也可以請鄰居協助。'}]},
+   {d:'現場有人昏迷嗎？有幾個人不舒服？',opts:[
+     {t:'有兩個人叫不醒，我自己頭暈想吐，已經到屋外了。',ok:1,say:'有兩個人叫不醒，我頭暈想吐，已經到屋外。'},
+     {t:'沒有人昏迷，大家只是想睡覺。',why:'<b>叫不醒、想睡、頭暈、想吐</b>都是中毒徵兆，要如實說明昏迷人數。'},
+     {t:'我再衝進去把他們拖出來，等一下再回報。',why:'<b>不要自己再衝進去</b>！室內濃度很高，你也會中毒昏迷，請交給有防護裝備的消防員。'}]},
+   {d:'你現在人在哪裡？有開著熱水器或瓦斯嗎？',opts:[
+     {t:'我在屋外空氣流通的地方，沒有再進屋；熱水器在浴室旁邊。',ok:1,say:'我在屋外空氣流通處，沒有再進屋；熱水器在浴室旁邊。'},
+     {t:'我還在屋裡陪著他們，把門窗關好保暖。',why:'要<b>離開屋內到戶外</b>，把門窗關緊只會讓濃度更高。'},
+     {t:'我回屋內開電燈、點打火機看看哪裡有問題。',why:'<b>不要開關電器或點火</b>，若同時有瓦斯外洩會非常危險。'}]},
+   {d:'好的，已派遣救護車和消防車。等待的時候你要做什麼？',opts:[
+     {t:'在屋外通風處等候、不再進屋，並在路口指引救援車輛。',ok:1,say:'在屋外通風處等候，不再進屋，並指引救援車輛。'},
+     {t:'進屋拿衣服保暖，順便把門窗關緊。',why:'<b>不要再進屋</b>，也不要把門窗關緊，屋內仍有高濃度一氧化碳。'},
+     {t:'打開瓦斯爐或電暖器讓大家取暖。',why:'<b>不要使用燃燒式設備取暖</b>，會讓一氧化碳更多。'}]}
+  ];
+}
+
+/* ---------- 第八關：不濫用救護車資源 ---------- */
+const STEPE={d1:'開警示燈鳴笛，前往報案地點',d3:'指揮中心：DACPR 進行中，家屬正在 CPR，趕往接手！',load:'救護員搬運傷病患上車',d4:'送往醫院急診（藍色圈）'};
+const EMSRULES='<div class="rule"><b>該打 119 的時機</b><span>① <b>危及生命的急重症</b>：意識不清或昏迷、呼吸困難或停止、疑似心肌梗塞的胸痛胸悶。② <b>災害或意外事故</b>急待救護。③ <b>路倒傷病無法行動</b>、孕婦待產，或其他緊急傷病。</span></div>'+
+ '<div class="rule"><b>不要濫用救護車</b><span>一般感冒、牙痛、慢性病回診、單純酒醉且沒有明顯症狀、明顯輕傷，或把救護車當免費計程車，都是不當使用，會耽誤真正危急的人。要求指定遠送、送到醫院後自行改去門診，也都不恰當。</span></div>'+
+ '<div class="rule"><b>民眾急救「叫叫壓電」</b><span><b>叫</b>：拍肩、大聲呼喚，確認有沒有反應與呼吸。<b>叫</b>：大聲求救並撥 119，指定人去<b>拿附近的 AED</b>。<b>壓</b>：在胸口中央用力快速按壓（約每分鐘 100～120 下），不要中斷。<b>電</b>：AED 一到就打開、依語音指示貼片並電擊。</span></div>'+
+ '<div class="rule"><b>非緊急就醫怎麼辦</b><span>改搭一般交通工具（家人載送、計程車、大眾運輸），或洽詢各縣市的非緊急救護／替代方案專線（例如部分縣市的 1999，或民間救護車）。</span></div>'+
+ '<div class="rule"><b>送往哪間醫院</b><span>依《緊急救護辦法》第 5 條，緊急傷病患運送以「急救責任醫院或就近適當醫療機構」為原則，不能指定遠送。</span></div>';
+const LESSON8='救護車的人力和車輛有限，要留給<b>急性且嚴重、不即時處置可能危及生命或造成嚴重傷害</b>的人。輕微感冒、回診、牙痛等非緊急就醫，請<b>自行搭乘一般交通工具</b>或洽非緊急救護管道；真正有意識不清、呼吸困難、胸痛等情況，要<b>毫不猶豫撥 119</b>。';
+const CAUSE8={sub:'到場評估',h:'這通救護車該不該出？',p:'你是救護技術員。根據到場評估的結果，判斷這次案件：',rt:'判斷：',bad:'想想看：意識、呼吸、生命徵象和症狀，有沒有急重症的跡象？',
+  clues:['民眾意識清楚、對答流暢，呼吸平順','體溫 37.4℃、血氧 98%、脈搏血壓都正常；只有流鼻水、輕微喉嚨癢','民眾說：「今天本來就要回診，想說叫救護車比較方便。」'],
+  right:'輕微感冒兼回診，屬非緊急就醫，不該占用救護車',wrong:['疑似心肌梗塞的急重症，需要立刻送醫','意識不清的昏迷傷病患，需要緊急處置'],
+  tips:['<b>救護車留給急重症</b>：意識不清、呼吸困難、胸痛胸悶、重大事故傷患、孕婦待產等，才是 119 救護車的任務。','<b>非緊急就醫</b>請自行搭乘一般交通工具（家人載送、計程車、大眾運輸），或洽詢各縣市的非緊急救護／替代方案專線，如部分縣市的 1999、民間救護車。','<b>民眾急救「叫叫壓電」</b>：叫（確認意識呼吸）、叫（求救撥 119）、壓（胸外按壓）、電（取得附近 AED 並使用）。','不要指定遠送或到院後自行改去門診；依《緊急救護辦法》第 5 條，緊急傷病患以送往急救責任醫院或就近適當醫療機構為原則。']};
+function emsQ(loc){
+  return [
+   {d:'情境 1：小明早上流鼻水、輕微咳嗽，沒有發燒、也不喘，想去診所看感冒。他該怎麼去？',opts:[
+     {t:'請家人載送或自己搭車去診所，不叫救護車。',ok:1,say:'請家人載送或自己搭車去診所，不叫救護車。'},
+     {t:'打 119，救護車比較快，也不用排隊。',why:'<b>一般感冒不是急重症</b>。救護車不是免費計程車，也不能讓人插隊看診。'},
+     {t:'先打 119 問問看能不能順便載我去掛號。',why:'119 是<b>緊急救護專線</b>，非緊急就醫請改用一般交通工具或非緊急管道。'}]},
+   {d:'情境 2：爸爸突然胸口悶痛、冷汗直流，快喘不過氣。該怎麼辦？',opts:[
+     {t:'立刻撥 119，說清楚地址和症狀，讓他坐著休息、等救護車。',ok:1,say:'立刻撥 119，說清楚地址和症狀。'},
+     {t:'先睡一下看看會不會好。',why:'<b>疑似心肌梗塞</b>每分鐘都很重要，不能等，要立刻打 119。'},
+     {t:'叫兒子慢慢開車載去診所。',why:'急重症要由<b>救護人員</b>在途中就開始處置，請直接打 119。'}]},
+   {d:'情境 3：阿嬤每個月要回診拿慢性病的藥，行動方便、沒有不舒服。該怎麼去？',opts:[
+     {t:'搭一般交通工具（家人載送、計程車、大眾運輸）；若有需要，洽非緊急救護專線。',ok:1,say:'搭一般交通工具；若有需要，洽非緊急救護專線。'},
+     {t:'打 119 叫救護車載去回診。',why:'<b>慢性病回診</b>屬非緊急就醫，不應使用救護車。'},
+     {t:'打 119，並要求指定送到比較遠的大醫院門診。',why:'<b>指定遠送</b>會讓救護車長時間離開責任區，萬一有急重症就來不及。'}]},
+   {d:'情境 4：孕婦在家突然破水、規律陣痛。該怎麼辦？',opts:[
+     {t:'撥 119，說明孕週、症狀和地址，等救護車到場。',ok:1,say:'撥 119，說明孕週、症狀和地址。'},
+     {t:'等痛到受不了再說。',why:'<b>孕婦待產</b>屬緊急情況，不要拖延。'},
+     {t:'自己騎機車去醫院。',why:'待產孕婦<b>不適合自己騎車</b>，請撥 119 或由他人安全載送。'}]},
+   {d:'情境 5：朋友喝醉了，意識清楚、能對話、沒有受傷，只是走路搖晃。該怎麼辦？',opts:[
+     {t:'陪著他、用一般方式送他回家，並觀察；若叫不醒或呼吸異常再撥 119。',ok:1,say:'陪著他送回家並觀察；若叫不醒或呼吸異常再撥 119。'},
+     {t:'打 119，叫救護車當計程車載他回家。',why:'<b>單純酒醉且沒有明顯症狀</b>不需要救護車；把救護車當交通工具是濫用。'},
+     {t:'把他一個人丟在路邊不管。',why:'要<b>陪伴與觀察</b>，若出現叫不醒、嘔吐不止、呼吸異常，立刻撥 119。'}]}
+  ];
+}
+function emsCallRender(){
+  const c=G.call,q=c.Q[c.q];
+  const log=c.log.map(l=>'<div class="cl d">'+esc(l[0])+'</div><div class="cl u">你：'+esc(l[1])+'</div>').join('');
+  sheet('<span class="sub">救護車使用常識　第 '+(G.mi+1)+'／'+MIS.length+' 件</span><h2>要不要叫救護車？</h2>'+
+   '<p>你是市民。遇到下面的情境，選出最適合的做法：</p>'+
+   '<div class="callbox">'+log+'<div class="cl d now">'+esc(q.d)+'</div></div>'+
+   '<div class="pick">'+q.opts.map((o,i)=>'<button type="button" data-a="call'+i+'">'+esc(o.t)+'</button>').join('')+'</div>'+
+   '<p class="lesson" id="callmsg" '+(c.msg?'':'hidden')+'>'+c.msg+'</p>');
+}
+function emsCallDone(){
+  const c=G.call;G.callBonus=c.wrong===0?40:c.wrong<=2?20:0;G.mode='call';
+  sheet('<span class="sub">救護車使用常識</span><h2>全部答完了！</h2>'+
+   '<p class="lesson">接下來你開 <b>土庫91 救護車</b>，到民眾家中處理一通「叫救護車」的案件，看看這次是不是真的需要。</p>'+
+   '<div class="callbox"><div class="cl d">救護資源使用觀念</div>'+EMSRULES+'</div>'+
+   (G.callBonus?'<p class="lesson">答題表現：加 '+G.callBonus+' 分。</p>':'')+
+   '<div class="btns"><button type="button" class="go" data-a="callgo">了解，前往勤務簡報</button></div>');
+}
+/* 到場評估 */
+const EMSCK=[
+ ['🩺 檢查意識與呼吸','意識清楚，對答流暢；呼吸平順，約每分鐘 16 次。'],
+ ['🌡 量體溫、血氧、脈搏','體溫 37.4℃、血氧 98%、脈搏 78 下、血壓正常。'],
+ ['❓ 詢問症狀與病史','只有流鼻水、輕微喉嚨癢；沒有胸痛、呼吸困難或意識改變。今天本來就排了門診回診。']];
+function startAssess(){
+  G.s.tArr=G.s.t;V.v=0;G.ph='assess';G.mode='ems';
+  inp.l=inp.r=inp.gas=inp.brk=0;
+  G.ems={done:new Set(),stage:0,wrong:0,delay:0,msg:'',opts:shuf([
+   {t:'友善說明：目前沒有急重症徵象，救護車要留給緊急傷病患；建議改搭一般交通工具或洽非緊急救護管道，自行前往就醫。',ok:1},
+   {t:'依民眾要求，把他載到指定的遠處大醫院門診。',why:'<b>指定遠送、把救護車當計程車</b>會讓救護車長時間離開責任區；依《緊急救護辦法》第 5 條，送往急救責任醫院或就近適當醫療機構為原則。'},
+   {t:'大聲責罵民眾浪費資源，轉身就走。',why:'要<b>專業又友善</b>，耐心說明比責罵有效，民眾下次才會正確使用。'},
+   {t:'不多說明，直接載到最近醫院急診，到了讓他自己想辦法。',why:'沒有急重症卻占用救護車和急診資源，會讓真正危急的人<b>等待更久</b>。'}])};
+  beep(660,.15,'triangle',.1);emsRender();
+}
+function emsRender(){
+  const e=G.ems;
+  if(e.stage===0){
+    const all=e.done.size>=EMSCK.length;
+    sheet('<span class="sub">土庫91 到場</span><h2>到場評估</h2>'+
+     '<div class="callbox"><div class="cl d">民眾</div><div class="cl u" style="text-align:left">「我只是有一點感冒、流鼻水啦……而且今天本來就要回診，想說叫救護車比較方便，也不用排隊。」</div>'+
+     EMSCK.map((c,i)=>e.done.has(i)?'<div class="cl d">'+esc(c[0])+'</div><div class="cl u" style="text-align:left">'+esc(c[1])+'</div>':'').join('')+'</div>'+
+     '<p>救護技術員要先<b>評估</b>，再決定怎麼處理。請完成三項檢查：</p>'+
+     '<div class="pick">'+EMSCK.map((c,i)=>e.done.has(i)?'':'<button type="button" data-a="emsc'+i+'">'+esc(c[0])+'</button>').join('')+'</div>'+
+     (all?'<div class="btns"><button type="button" class="go" data-a="emsnext">評估完成，決定處理方式</button></div>':''));
+  }else if(e.stage===1){
+    sheet('<span class="sub">處理方式</span><h2>你要怎麼處理？</h2>'+
+     '<p>評估結果：意識清楚、生命徵象正常，只有輕微感冒症狀，是為了回診才叫救護車。</p>'+
+     '<div class="pick">'+e.opts.map((o,i)=>'<button type="button" data-a="emsr'+i+'">'+esc(o.t)+'</button>').join('')+'</div>'+
+     '<p class="lesson" id="emsmsg" '+(e.msg?'':'hidden')+'>'+e.msg+'</p>');
+  }else{
+    sheet('<span class="sub">119 派遣</span><h2>第二件緊急案件！</h2>'+
+     '<p class="lesson"><b>仁美街</b>有一名長者突然倒地、叫不醒、沒有呼吸！<b>指揮中心通報：目前正進行 DACPR</b>（119 派遣員透過電話指導心肺復甦），<b>家屬正在做 CPR</b>。<b>土庫91</b> 距離最近，請立刻前往接手！</p>'+
+     '<div class="callbox"><div class="cl d">這才是救護車該出動的時刻</div>'+
+     '<div class="rule"><span>意識不清、呼吸停止，每分鐘都很重要。家屬依照派遣員指導持續按壓，能為病人爭取時間，也請旁人<b>去拿附近的 AED</b>；如果救護車還被輕症案件占著，病人就可能來不及。</span></div></div>'+
+     (e.delay?'<p class="lesson">剛才處理不當，耽誤了 <b>'+e.delay+'</b> 秒，傷病患狀況會比較差。</p>':'<p class="lesson">處理得當，沒有耽誤時間。</p>')+
+     '<div class="btns"><button type="button" class="go" data-a="emsgo">出發！</button></div>');
+  }
+}
+function emsCheck(i){const e=G.ems;e.done.add(i);beep(700,.08,'triangle',.07);emsRender();}
+function emsPick(i){
+  const e=G.ems,o=e.opts[i];
+  if(!o.ok){e.wrong++;e.delay+=10;e.msg='<b>再想想：</b>'+o.why;beep(200,.2,'sawtooth',.08);emsRender();return;}
+  beep(880,.15,'triangle',.08);e.stage=2;e.msg='';emsRender();
+}
+function emsResume(){
+  const e=G.ems,M=MIS[G.mi];
+  const pp=atRoad('仁美街',450,545),nv=sideNormal(pp.a),rd=RD['仁美街'],lane=rd.w/4;
+  G.emsDelay=e.delay;G.emsBonus=e.wrong===0?50:e.wrong===1?25:0;
+  PT={x:pp.x+nv.x*(rd.w/2+10),y:pp.y+nv.y*(rd.w/2+10),hp:Math.max(45,100-e.delay*.8),state:'wait',on:true};
+  G.goals.d3={x:pp.x+nv.x*lane,y:pp.y+nv.y*lane,r:48,col:'#ff6b8a',label:'傷病患'};
+  G.ph='d3';G.mode='play';ovEl.hidden=true;gps=null;gpsT=0;
+  setModeUI();camSnap();
+  const msgs=['指揮中心通報：目前進行 DACPR，派遣員電話指導家屬心肺復甦','家屬正在 CPR！土庫91 加速前往，鳴笛讓路','派遣員持續線上指導：「手放胸口中央，用力快速壓、不要停」；請旁人去拿附近的 AED','叫叫壓電：叫（確認意識）、叫（打 119）、壓（胸外按壓）、電（拿 AED 使用）。土庫91 即將到場，準備接手'];
+  const gid=G.mi+'_'+Date.now();G.emsMsgId=gid;
+  msgs.forEach((m,k)=>setTimeout(()=>{if(G.emsMsgId===gid&&G.ph==='d3'&&G.mode==='play'){toast(m,'warn',3600);beep(740,.12,'triangle',.08);}},k*4500));
+}
+
+function roomy(x,y,m){if(sd(x,y)<-8)return false;for(const c of circs)if(Math.hypot(x-c.x,y-c.y)<c.r+m)return false;return true;}
+function stepOK(nx,ny){
+  if(sd(nx,ny)<-14&&sd(nx,ny)<sd(PP.x,PP.y))return false;
+  for(const c of circs){const dn=Math.hypot(nx-c.x,ny-c.y);if(dn<c.r+4.5&&dn<Math.hypot(PP.x-c.x,PP.y-c.y))return false;}
+  return true;
+}
+function trapped(){for(let k=0;k<8;k++){const a=k*.785;if(stepOK(PP.x+Math.cos(a)*2,PP.y+Math.sin(a)*2))return false;}return true;}
+function unstickPP(){
+  if(!PP||!trapped())return;
+  for(const m of[16,10,6])for(let r=8;r<=200;r+=8)for(let k=0;k<20;k++){const a=k*.314,x=PP.x+Math.cos(a)*r,y=PP.y+Math.sin(a)*r;if(roomy(x,y,m)){PP.x=x;PP.y=y;return;}}
+}
+
+const LOCS=['文化路，土庫國小旁邊的民宅','大同路，有招牌的店面','仁美街的民宅','仁美街的高樓大廈（說明幾樓起火）','大同路老街的木造古蹟連棟建築','中正路，地震後倒塌的建築物','仁美街的住家（說明樓層與門牌）','大同路的住家（說明地址與目前症狀）'];
+function brief(){
+  if(G.callMi===G.mi){briefSheet();return;}
+  if(MIS[G.mi].quake)G.qkDone=0;
+  loadMission(G.mi);G.callBonus=0;
+  if(MIS[G.mi].quake){quakeStart();return;}
+  callStart();
+}
+function shuf(a){return a.slice().sort(()=>Math.random()-.5);}
+function callStart(){
+  const M=MIS[G.mi],trapped=!!M.res,hurt=!!M.vic,loc=LOCS[G.mi];
+  const Q=[
+   {d:'119 火警受理台，請問發生什麼事？',opts:[
+     {t:'我要報火警，需要消防車！',ok:1,say:'我要報火警，需要消防車！'},
+     {t:'我這邊有點狀況，你們可以過來看看嗎？',why:'要<b>直接說清楚</b>：是火災、需要消防車，受理員才能馬上派車。'},
+     {t:'先等一下，我去看看再打給你。',why:'發現火災要<b>立刻報案</b>，不要自己先跑去看、耽誤時間。'}]},
+   {d:'請問火災地點在哪裡？',opts:[
+     {t:'在'+loc+'；門牌我現在看一下講給你，附近還有明顯的大目標。',ok:1,say:'在'+loc+'，門牌和附近明顯目標都說清楚。'},
+     {t:'就在前面那邊啦，你們過來就看得到。',why:'<b>地址要講清楚</b>（路名、門牌），沒有門牌就說附近明顯的大目標，消防車才找得到。'},
+     {t:'我不知道這是哪裡，你們自己找。',why:'先看路牌、門牌，或說出附近的學校、廟宇、店家等<b>明顯大目標</b>。'}]},
+   {d:'屋內的人都逃出來了嗎？還有人受困沒出來嗎？',opts:trapped?[
+     {t:'還有人受困沒逃出來！請快來，我說明他們可能在哪裡。',ok:1,say:'還有人受困沒逃出來，並說明可能的位置。'},
+     {t:'人都出來了，不用管。',why:'這件<b>確實還有人沒出來</b>。要如實回報有沒有人受困，消防員才會優先搜救。'},
+     {t:'我進去幫忙找人，再回報你。',why:'<b>不要自己衝回火場</b>！濃煙很快會讓人昏迷。請消防員專業搜救。'}]:[
+     {t:'屋內的人都已經逃出來了。',ok:1,say:'屋內的人都已經逃出來了。'},
+     {t:'我進去看看還有沒有人，再回報你。',why:'<b>不要自己衝回火場</b>！先在外面確認、如實回報。'},
+     {t:'有沒有人不重要，先派車就好。',why:'<b>有沒有人受困</b>是最重要的資訊之一，要說清楚。'}]},
+   {d:'有人受傷嗎？',opts:hurt?[
+     {t:'有人受傷，我說明人數和傷勢。',ok:1,say:'有人受傷，並說明人數和傷勢。'},
+     {t:'沒有人受傷。',why:'這件<b>有人受傷</b>，要說明，受理員才會同時派救護車。'},
+     {t:'這不重要，你們先來就好。',why:'傷者的資訊要說，才能一起派<b>救護車</b>。'}]:[
+     {t:'目前沒有人受傷。',ok:1,say:'目前沒有人受傷。'},
+     {t:'有人受傷，快派救護車！',why:'要<b>如實回報</b>：這件目前沒有人受傷。'},
+     {t:'我不知道，我先掛電話了。',why:'<b>不要先掛電話</b>，要等受理員問完、確認資訊。'}]},
+   {d:'好的，已派遣消防車。等消防車的時候你要做什麼？',opts:[
+     {t:'到安全的地方等候，不再進屋，並在路口指引消防車。',ok:1,say:'到安全處等候，不再進屋，並指引消防車。'},
+     {t:'趕快回屋裡拿存摺和貴重物品。',why:'<b>不要為了財物回頭</b>，火場的煙幾口就會讓人昏迷。'},
+     {t:'站在門口拍影片，看消防車來。',why:'要<b>退到安全處</b>，別在火場旁逗留，也別擋住消防車通道。'}]}
+  ];
+  if(M.quake)Q.splice(0,Q.length,...quakeQ(loc));
+  else if(M.co)Q.splice(0,Q.length,...coQ(loc));
+  else if(M.ems)Q.splice(0,Q.length,...emsQ(loc));
+  Q.forEach(q=>q.opts=shuf(q.opts));
+  G.call={q:0,Q,wrong:0,log:[],msg:''};G.mode='call';callRender();
+}
+function callRender(){
+  if(MIS[G.mi].ems)return emsCallRender();
+  const c=G.call,q=c.Q[c.q],M=MIS[G.mi];
+  const log=c.log.map(l=>'<div class="cl d">'+esc(l[0])+'</div><div class="cl u">你：'+esc(l[1])+'</div>').join('');
+  sheet('<span class="sub">民眾報案　第 '+(G.mi+1)+'／'+MIS.length+' 件</span><h2>撥打 119</h2>'+
+    '<p>'+(M.quake?'你是現場的民眾，地震後發現附近有建築物倒塌、有人受困。請說清楚，消防隊和救護車才能快速出動。':M.co?'你是現場的民眾，發現家人在家中昏迷，屋內的人頭暈想吐。請說清楚，消防隊和救護車才能快速出動。':'你是現場的民眾，發現「'+esc(M.name.replace(/（.*?）/,'').replace(/　.*/,''))+'」。請說清楚，消防隊才能快速出動。')+'</p>'+
+    '<div class="callbox">'+log+'<div class="cl d now">'+esc(q.d)+'</div></div>'+
+    '<div class="pick">'+q.opts.map((o,i)=>'<button type="button" data-a="call'+i+'">'+esc(o.t)+'</button>').join('')+'</div>'+
+    '<p class="lesson" id="callmsg" '+(c.msg?'':'hidden')+'>'+c.msg+'</p>');
+}
+function callPick(i){
+  const c=G.call,q=c.Q[c.q],o=q.opts[i];
+  if(o.ok){c.log.push([q.d,o.say]);c.q++;c.msg='';beep(880,.12,'triangle',.08);if(c.q>=c.Q.length)callDone();else callRender();}
+  else{c.wrong++;c.msg='<b>再想想：</b>'+o.why;beep(200,.2,'sawtooth',.08);callRender();}
+}
+function callDone(){
+  if(MIS[G.mi].ems)return emsCallDone();
+  const c=G.call;G.callBonus=c.wrong===0?40:c.wrong<=2?20:0;
+  G.mode='call';
+  sheet('<span class="sub">119 受理台</span><h2>已受理，消防車出動！</h2>'+
+   '<p class="lesson">報案要說清楚：<b>① 要什麼車（'+(MIS[G.mi].quake||MIS[G.mi].co?'消防車、救護車':'火警')+'）</b>　<b>② 地址／明顯大目標</b>　<b>③ '+(MIS[G.mi].quake?'有無人受困、大約幾人':MIS[G.mi].co?'有幾人昏迷、你在哪裡':'人是否逃出、有無受困')+'</b>　<b>④ 有無受傷</b>。說完不要先掛電話，聽受理員指示。</p>'+
+   '<div class="callbox"><div class="cl d">避難逃生觀念</div>'+
+   (MIS[G.mi].quake?QRULES:MIS[G.mi].co?CORULES:'<div class="rule"><b>小火快跑</b><span>發現火災，火還小就要<b>立刻往外跑</b>並通報 119，不要為了滅火、拿東西或拍照逗留。</span></div>')+
+   (MIS[G.mi].quake||MIS[G.mi].co?'':'<div class="rule"><b>濃煙關門</b><span>逃生路線被濃煙封住時，不要硬衝。<b>關上房門</b>擋住煙和火，用濕毛巾塞住門縫，到窗邊或陽台揮手呼救，等消防隊救援。</span></div></div>')+
+   (G.callBonus?'<p class="lesson">報案表現：'+(c.wrong===0?'一次答對':'答對')+'，加 '+G.callBonus+' 分。</p>':'')+
+   '<div class="btns"><button type="button" class="go" data-a="callgo">了解，前往勤務簡報</button></div>');
+}
+function briefSheet(){
+  const M=MIS[G.mi];loadMission(G.mi);G.mode='brief';
+  sheet('<span class="sub">119 派遣　第 '+(G.mi+1)+'／'+MIS.length+' 件</span><h2>'+esc(M.name)+'</h2><p>'+esc(M.brief)+'</p>'+
+    '<div class="btns"><button type="button" class="go" data-a="go">出發</button></div>');
+}
+const CAUSES=[
+ {clues:['廚房爐具周圍燻黑最嚴重，鍋子燒乾、鍋底焦黑','爐子旋鈕還在「開」的位置','屋主說：「我去隔壁聊天，只是一下下。」'],
+  right:'爐火烹煮時人離開，沒關火，食物燒乾起火',wrong:['神明廳電線走火','小孩玩打火機'],
+  tips:['<b>人離火熄</b>：離開廚房一定要關火，哪怕只是一下。','煮東西時定時、不要離開視線；爐具周圍移開抹布、紙類等易燃物。','廚房裝設住宅用火災警報器、備妥小型滅火器。']},
+ {clues:['起火點在神明廳，神桌後方牆內電線外皮龜裂','插座上同時接了多個電器，插頭有焦黑痕跡','房子已有三十年以上，電線從未更換'],
+  right:'神明廳電線老舊、過載，電線短路起火',wrong:['爐火烹煮疏忽','隨意丟棄菸蒂'],
+  tips:['老舊房屋的電線<b>定期請合格電工檢查、汰換</b>。','不要一個插座接太多電器；延長線不要綑在一起使用。','神明廳用電子蠟燭、電子香取代明火，也能降低火災風險。']},
+ {clues:['起火處在屋外空地，地上有焚燒過的垃圾與乾草痕跡','當天風勢很強，燒焦的痕跡順著風向延伸','火勢越過圍牆，燒到隔壁建築外牆'],
+  right:'隨意燃燒垃圾、雜草，遇強風延燒到建築物',wrong:['行動電源起火','廚房爐火未關'],
+  tips:['<b>不要隨意燃燒垃圾、雜草</b>，露天燃燒不只違法，風一吹就會失控。','垃圾請交給清潔隊，雜草可以割除、堆肥，不要用火處理。','發現有人露天燃燒、火勢擴大時，立刻報案 119。']},
+ {clues:['起火點在臥室床邊，棉被與床墊燒得最嚴重','床邊的插座上有一條充電線，行動電源外殼嚴重鼓脹、熔毀','住戶說：「習慣半夜充電，放在枕頭旁邊。」'],
+  right:'行動電源半夜充電，放在寢具旁，過熱起火',wrong:['蚊香引燃窗簾','爐火烹煮疏忽'],
+  tips:['<b>不要在睡覺時充電</b>，也不要把手機、行動電源放在床上、棉被或枕頭下。','使用有認證標示的產品，充電時放在不易燃的平面並保持通風。','電池鼓脹、發燙、有異味，立刻停止使用並妥善回收。']},
+ {clues:['起火點在古蹟屋簷下，附近地上有大量爆竹紙屑','節慶當晚有人在古蹟旁施放爆竹、煙火','木構造乾燥，火星飛入屋簷後迅速延燒成連棟火警'],
+  right:'在古蹟旁違規施放爆竹煙火，火星引燃木造建築',wrong:['神明廳電線走火','行動電源起火'],
+  tips:['<b>古蹟、木造建築周邊不要施放爆竹煙火</b>，火星很容易飛進屋簷。','施放爆竹煙火要依規定，選擇空曠安全的場地，並遠離建築物與易燃物。','古蹟內外備妥滅火器、定期自主檢查電源與用火。']},
+ {sub:'震後安全',h:'地震停了，回到家要先做什麼？',p:'根據下列情況，選出最正確的做法：',rt:'正確做法：',bad:'想想看：地震後可能有瓦斯外洩、電線受損，還會有餘震。',
+  clues:['地震停了，屋內東西掉滿地','家裡有瓦斯味，電燈也一閃一閃','牆壁出現明顯裂縫，門窗有些變形'],
+  right:'不開關電器、不點火，開窗通風，穿好鞋子撤到空曠處，注意餘震，必要時撥 119',wrong:['按電燈開關確認有沒有電，順便用打火機找瓦斯味從哪裡來','搭電梯快速下樓，再回頭搬貴重物品'],
+  tips:['<b>趴下、掩護、穩住</b>：搖晃時先保護頭頸，搖晃停止前不要衝出去、不搭電梯；在室外要遠離招牌、外牆和電線桿。','震後聞到瓦斯味，<b>不開關電器、不點火</b>，開窗通風後撤離，到安全處再報案。','平時固定高櫃、準備避難包，並和家人約好避難集合點。']},
+ {sub:'冬季安全',h:'兩個人為什麼會昏倒？',p:'根據現場情況，選出最可能的原因：',rt:'原因：',bad:'想想看：現場的熱水器、排氣管和門窗有什麼問題？',
+  clues:['浴室旁裝著瓦斯熱水器，排氣管被雜物擠壓，末端還被塑膠袋蓋住','寒流來襲，住戶把門窗全部緊閉，連氣窗都用膠帶封住','兩人洗完澡後頭暈、想吐，隨後一人昏倒在浴室門口'],
+  right:'熱水器排氣不良、室內沒有通風，瓦斯燃燒不完全產生一氧化碳（CO）',wrong:['浴室地板太滑，兩個人滑倒撞到頭','天氣太冷，兩個人凍到昏倒'],
+  tips:['<b>冬天也要通風</b>：使用瓦斯熱水器、爐具時保持空氣流通；覺得頭暈、頭痛、想吐，立刻開窗、到戶外呼吸新鮮空氣。','<b>熱水器安裝</b>：裝在室外或通風良好處，不裝在浴室內；選用強制排氣型或屋外型，排氣管接到室外且保持暢通，請合格業者安裝並定期檢修。','不要用瓦斯爐、炭火取暖；可加裝一氧化碳警報器。發現有人昏迷，<b>不要自己衝進去</b>，先開窗通風、到戶外並撥 119。']}
+];
+function causeStart(why,pts,stars){
+  CAUSES[7]=CAUSE8;
+  const c=CAUSES[G.mi];if(!c){resultSheet2(true,why,pts,stars);return;}
+  const opts=shuf([{t:c.right,ok:1}].concat(c.wrong.map(t=>({t}))));
+  G.cz={opts,wrong:0,why,pts,stars};G.mode='result';causeRender();
+}
+function causeRender(){
+  const c=CAUSES[G.mi],z=G.cz;
+  sheet('<span class="sub">'+(c.sub||'火災原因調查')+'　第 '+(G.mi+1)+'／'+MIS.length+' 件</span><h2>'+(c.h||'火撲滅了，起火原因是什麼？')+'</h2>'+
+   '<p>'+(c.p||'你是火災調查人員。根據現場跡證，判斷最可能的起火原因：')+'</p>'+
+   '<div class="callbox">'+c.clues.map(t=>'<div class="cl d">🔍 '+esc(t)+'</div>').join('')+'</div>'+
+   '<div class="pick">'+z.opts.map((o,i)=>'<button type="button" data-a="cz'+i+'">'+esc(o.t)+'</button>').join('')+'</div>'+
+   '<p class="lesson" id="czmsg" '+(z.msg?'':'hidden')+'>'+(z.msg||'')+'</p>');
+}
+function causePick(i){
+  const z=G.cz,c=CAUSES[G.mi],o=z.opts[i];
+  if(!o.ok){z.wrong++;z.msg=c.bad?'<b>再想想：</b>'+c.bad:'<b>再看一次跡證：</b>這個答案和現場的燃燒痕跡、使用情況對不上。';beep(200,.2,'sawtooth',.08);causeRender();return;}
+  G.causeBonus=z.wrong===0?30:z.wrong===1?15:0;beep(880,.15,'triangle',.08);
+  sheet('<span class="sub">'+(c.sub||'火災原因調查')+'結果</span><h2>'+(c.rt||'起火原因：')+esc(c.right)+'</h2>'+
+   '<div class="callbox"><div class="cl d">預防重點</div>'+c.tips.map(t=>'<div class="rule"><span>'+t+'</span></div>').join('')+'</div>'+
+   (G.causeBonus?'<p class="lesson">調查表現：加 '+G.causeBonus+' 分。</p>':'')+
+   '<div class="btns"><button type="button" class="go" data-a="czgo">看本關成績</button></div>');
+}
+function causeDone(){
+  const z=G.cz;if(G.res[G.mi])G.res[G.mi].pts+=G.causeBonus||0;
+  resultSheet2(true,z.why,z.pts+(G.causeBonus||0),z.stars);
+}
+function resultSheet(ok,why,pts,stars){if(ok){G.causeBonus=0;causeStart(why,pts,stars);}else resultSheet2(ok,why,pts,stars);}
+function resultSheet2(ok,why,pts,stars){
+  const s=G.s,M=MIS[G.mi];
+  const stat=(a,b)=>'<span>'+a+'</span><span>'+b+'</span>';
+  const lessons=[
+    '水箱車的水只夠撐一小段時間，所以第二台水庫車要<b>盡快佔據消防栓</b>、拉水帶接力供水。消防栓前請不要停車。',
+    '救護車和消防車開警示燈鳴笛時，<b>前後左右的車都要靠右停</b>；路口紅燈時也要先讓緊急車輛通過，再依序前進。',
+    '路邊違停會讓消防車、救護車<b>被迫繞路</b>，每多繞一段都是延誤。紅線、黃線、消防栓前、路口附近都不能停車。',
+    '高樓層火災水線打不到，要靠<b>雲梯車</b>架梯從上方射水；同時要保護鄰棟，防止飛火隨風向延燒。',
+    '木造連棟建築延燒極快，要<b>先保護下風處的鄰棟</b>；大型火警常需跨分隊（如高鐵分隊）支援，多車組同時射水才壓得住。',
+    '強震來時先<b>趴下、掩護、穩住</b>保護頭頸，搖晃停止前不要衝出去、不搭電梯。倒塌的建築可能二次崩塌，要交給專業救災人員；受困時<b>敲擊管線或吹哨</b>求援，不要大喊吸入灰塵。',
+    '冬天用瓦斯熱水器、爐具，門窗要<b>留通風口</b>；熱水器要裝在<b>室外或通風良好處</b>，排氣管接到室外並保持暢通，請合格業者安裝、定期檢修。洗澡頭暈想吐，馬上開窗、到戶外；發現有人昏迷，<b>不要自己衝進去</b>，先通風、報 119。'
+  ];
+  lessons[7]=LESSON8;
+  sheet('<span class="sub">派遣 '+(G.mi+1)+'／'+MIS.length+' · '+esc(M.name)+'</span>'+
+    '<h2>'+(ok?'任務完成':'任務失敗')+'</h2>'+
+    (ok?'<p class="stars">'+'★'.repeat(stars)+'☆'.repeat(3-stars)+'</p>':'<p>'+esc(why||'')+'</p>')+
+    '<div class="stats">'+(ok?stat('本件得分',pts):'')+stat('用時',Math.floor(s.t/60)+' 分 '+Math.round(s.t%60)+' 秒')+
+    (s.tArr!=null?stat(M.ems?'土庫91 抵達現場':(M.quake||M.co)?'土庫11 抵達現場':'水箱車抵達火場',Math.round(s.tArr)+' 秒'):'')+((M.quake||M.co||M.ems)?'':stat('剩餘水量',Math.round(F.tank)+'%'))+
+    (PT?stat('傷患狀況',Math.round(PT.hp)+'%'):'')+(M.ems?stat('處理耽誤時間',(G.emsDelay||0)+' 秒'):(M.quake||M.co)?stat(M.co?'救出昏迷民眾':'救出受困民眾',(s.rescued||0)+'／'+VICS.length):stat('延燒棟數',s.lost))+stat('碰撞次數',s.hits)+stat('鳴笛讓路',(s.honked||0)+' 輛')+stat('被撞倒的消防員',s.ped)+(RES.length?stat('居民安全',RES.filter(r=>r.state!=='hurt').length+'／'+RES.length):'')+((s.ffDodge+s.ffHit)?stat(M.quake?'餘震落石閃避':'閃燃／瓦斯閃避',s.ffDodge+'／'+(s.ffDodge+s.ffHit)):'')+(M.co&&G.co?stat('通風後一氧化碳濃度',Math.round(G.co.ppm)+' ppm'):'')+(M.co&&G.coBonus?stat('依序檢測通風','+'+G.coBonus):'')+(G.qBonus&&M.quake?stat('趴下掩護穩住','+'+G.qBonus):'')+(G.causeBonus?stat(M.quake?'震後安全題':M.co?'冬季安全題':M.ems?'到場評估題':'起火原因調查','+'+G.causeBonus):'')+(G.callBonus?stat('報案表現','+'+G.callBonus):'')+(G.kitBonus?stat('裝備檢查','+'+G.kitBonus):'')+'</div>'+
+    '<p class="lesson">'+lessons[G.mi]+'</p>'+
+    '<div class="btns"><button type="button" data-a="retry">再試一次</button><button type="button" class="go" data-a="next">'+(G.mi<MIS.length-1?'下一件':'看總成績')+'</button></div>');
+}
+function finalSheet(){
+  G.mode='final';
+  const total=G.res.reduce((a,r)=>a+(r?r.pts:0),0);
+  const title=total>=3300?'土庫救災王':total>=2300?'穩健老手':total>=1200?'出勤新手':'還在熟悉路況';
+  if(total>best){best=total;try{localStorage.setItem('tukuBest',String(best));}catch(e){}}
+  G.share='我在「土庫救災大作戰」拿到 '+total+' 分，稱號「'+title+'」。看到消防車、救護車鳴笛，請靠右停車讓路；消防栓前、紅黃線上請不要停車。';
+  sheet('<span class="sub">今日出勤結算</span><h2>'+total+' 分　「'+title+'」</h2>'+
+    '<div class="stats"><span>最高分</span><span>'+best+'</span></div>'+
+    '<p class="lesson">真實的救災靠<b>多台車、多個人接力</b>：水箱車先搶救、水庫車供水、救護車送醫。民眾能幫上的最大一件事：<b>聽到警笛就靠邊停、不要違停擋住通道。</b></p>'+
+    '<div class="btns"><button type="button" data-a="copy">複製成績</button><button type="button" class="go" data-a="again">再玩一次</button></div>');
+}
+function act(a){
+  audioInit();if(ac&&ac.state==='suspended')ac.resume();
+  if(a==='start'){G.mi=0;G.res=[];G.callMi=-1;brief();}
+  else if(a==='go'){kitSheet();}
+  else if(a==='czgo'){causeDone();}
+  else if(/^qa\d$/.test(a)){qPick(+a[2]);}
+  else if(a==='qgo'){qGo();}
+  else if(/^cz\d$/.test(a)){causePick(+a[2]);}
+  else if(/^emsc\d$/.test(a)){emsCheck(+a[4]);}
+  else if(a==='emsnext'){G.ems.stage=1;emsRender();}
+  else if(/^emsr\d$/.test(a)){emsPick(+a[4]);}
+  else if(a==='emsgo'){emsResume();}
+  else if(a==='callgo'){G.callMi=G.mi;briefSheet();}
+  else if(/^call\d$/.test(a)){callPick(+a[4]);}
+  else if(a==='kitok'){kitCheck();}
+  else if(a==='kitskip'){G.kitBonus=0;startRun();}
+  else if(/^kit\d+$/.test(a)){const i=+a.slice(3),k=G.kit;if(k.sel.has(i))k.sel.delete(i);else k.sel.add(i);const b=sheetEl.querySelector('[data-a="'+a+'"]');if(b)b.classList.toggle('sel',k.sel.has(i));}
+  else if(a==='retry'){brief();}
+  else if(a==='next'){if(G.mi<MIS.length-1){G.mi++;brief();}else finalSheet();}
+  else if(a.slice(0,4)==='pick'){G.mi=+a.slice(4);G.res=[];G.callMi=-1;brief();}
+  else if(a==='again'){G.mi=0;G.res=[];G.callMi=-1;brief();}
+  else if(a==='menu'){menu();}
+  else if(a==='resume'){ovEl.hidden=true;G.mode='play';}
+  else if(a==='copy'){const done=()=>{const b=sheetEl.querySelector('[data-a=copy]');if(b)b.textContent='已複製';};try{navigator.clipboard.writeText(G.share).then(done,()=>{});}catch(e){}}
+}
+let laneShown=0,laneWant=0;
+function laneSvg(n){
+  const W=108,H=96,lw=(W-8)/n,car=(x,y,c)=>'<rect x="'+x+'" y="'+y+'" width="20" height="34" rx="5" fill="'+c+'"/><rect x="'+(x+4)+'" y="'+(y+6)+'" width="12" height="8" rx="2" fill="#0b1118" opacity=".55"/>';
+  let o='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+n+'線道">';
+  o+='<rect x="0" y="0" width="'+W+'" height="'+H+'" rx="6" fill="#2b323b"/>';
+  for(let i=1;i<n;i++)o+='<line x1="'+(4+i*lw)+'" y1="4" x2="'+(4+i*lw)+'" y2="'+(H-4)+'" stroke="#d9dde2" stroke-width="1.5" stroke-dasharray="7 6" opacity=".7"/>';
+  const lx=4,rx=W-4;
+  const amb='<g><rect x="'+(W/2-11)+'" y="56" width="22" height="36" rx="5" fill="#f4f4f4"/><rect x="'+(W/2-11)+'" y="56" width="22" height="9" rx="4" fill="#ff3b30"/><rect x="'+(W/2-7)+'" y="70" width="14" height="4" fill="#ff3b30"/></g>';
+  if(n===1){o+=car(W-4-22,14,'#4aa3ff')+'<path d="M'+(W-34)+' 40 L'+(W-18)+' 40" stroke="#ffcf3a" stroke-width="2.5" marker-end="url(#ar)"/>';o+=amb.replace('x="'+(W/2-11)+'"','x="6"').replace('x="'+(W/2-11)+'"','x="6"').replace('x="'+(W/2-7)+'"','x="10"');}
+  else if(n===2){o+=car(5,14,'#4aa3ff')+car(W-25,14,'#6fd08c')+'<path d="M24 62 L10 62" stroke="#ffcf3a" stroke-width="2.5"/><path d="M'+(W-24)+' 62 L'+(W-10)+' 62" stroke="#ffcf3a" stroke-width="2.5"/>'+amb;}
+  else{o+=car(5,14,'#4aa3ff')+car(W-25,14,'#6fd08c')+amb;}
+  return o+'<defs><marker id="ar" markerWidth="6" markerHeight="6" refX="4" refY="3" orient="auto"><path d="M0 0L6 3L0 6z" fill="#ffcf3a"/></marker></defs></svg>';
+}
+function laneCard(){
+  G.mode='paused';inp.l=inp.r=inp.gas=inp.brk=inp.spray=0;document.querySelectorAll('.pad').forEach(b=>b.classList.remove('on'));
+  const cell=(n,t,d)=>'<div class="lc"><div class="lsv">'+laneSvg(n)+'</div><b>'+t+'</b><span>'+d+'</span></div>';
+  sheet('<span class="sub">交通安全宣導</span><h2>聽到警笛：一右、二分、三中空</h2>'+
+   '<p>看到前方有車讓路了！真實道路上遇到救護車、消防車鳴笛，請<b>保持冷靜</b>，依車道數避讓：</p>'+
+   '<div class="lanes">'+cell(1,'一線道：靠右停','往右靠邊停下，讓出左邊給救護車')+cell(2,'二線道：分左右','左車往左、右車往右，中間讓出來')+cell(3,'三線道：中間空','左右兩側各自讓開，中間留空給消防車、救護車')+'</div>'+
+   '<p class="lesson"><b>不要急煞、不要搶道、不要跟著救護車跑。</b>讓出通道，就是幫救災爭取時間。</p>'+
+   '<div class="btns"><button type="button" class="go" data-a="resume">我知道了，繼續</button></div>');
+}
+
+/* ---------- 隊部無線電 / 封路改道 ---------- */
+function addBlock(){
+  const g=goalNow();if(!g||!V||!gps)return false;
+  let tx=null,acc=0;
+  for(let i=1;i<gps.length;i++){acc+=Math.hypot(gps[i][0]-gps[i-1][0],gps[i][1]-gps[i-1][1]);if(acc>480){tx=gps[i];break;}}
+  if(!tx||Math.hypot(tx[0]-g.x,tx[1]-g.y)<280)return false;
+  let bn=null,bd=1e9,bq=null;
+  for(const n in RD){const q=nearOnPoly(RD[n].pts,tx[0],tx[1]);if(q.d<bd){bd=q.d;bn=n;bq=q;}}
+  if(!bn||bd>30)return false;
+  const R=RD[bn],sv=R.cum[bq.i]+bq.t*(R.cum[bq.i+1]-R.cum[bq.i]);
+  const nd=discovered.concat([{road:bn,s:sv}]);
+  const r=route(V.x,V.y,g.x,g.y,nd);
+  if(!r||r.length<3)return false;
+  const p=R.pts,a=Math.atan2(p[bq.i+1][1]-p[bq.i][1],p[bq.i+1][0]-p[bq.i][0]),nn=sideNormal(a);
+  for(let o=-R.w/2+8;o<=R.w/2-7;o+=16){const c={x:bq.x+nn.x*o,y:bq.y+nn.y*o};statC.push({x:c.x,y:c.y,r:9,cone:1});G.cones.push(c);}
+  discovered=nd;gpsT=0;
+  return true;
+}
+function radioUpdate(dt){
+  const M=MIS[G.mi];
+  if(M.radio)while(G.radioI<M.radio.length&&G.s.t>=M.radio[G.radioI].t){
+    const r=M.radio[G.radioI++];
+    if(r.block){if(!(G.ph==='d1'||G.ph==='d2'||G.ph==='d3'||G.ph==='d4'))continue;if(!addBlock())continue;}
+    toast('📻 隊部：'+r.txt,'warn',4200);beep(1200,.08,'square',.05);setTimeout(()=>beep(900,.08,'square',.05),110);
+  }
+  if(G.cones.length)for(let i=cars.length-1;i>=0;i--){const c=cars[i];if(G.cones.some(q=>Math.hypot(c.x-q.x,c.y-q.y)<46)){cars.splice(i,1);spawnCar(false);}}
+}
+function drawCones(){
+  for(const c of G.cones||[]){
+    ctx.fillStyle='rgba(0,0,0,.3)';ctx.beginPath();ctx.ellipse(c.x+2,c.y+3,7,4,0,0,6.3);ctx.fill();
+    ctx.fillStyle='#ff7a1a';ctx.beginPath();ctx.moveTo(c.x,c.y-9);ctx.lineTo(c.x+7,c.y+6);ctx.lineTo(c.x-7,c.y+6);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#fff';ctx.fillRect(c.x-4,c.y-1,8,3);
+  }
+}
+/* ---------- 居民疏散 ---------- */
+function spawnRes(){
+  RES=[];SAFE=null;const M=MIS[G.mi];if(!M.res)return;
+  const R=RD[M.road],bs=atRoad(M.road,M.at[0],M.at[1]);
+  const ox=-Math.cos(wind.a),oy=-Math.sin(wind.a);
+  let best=null,bd=-1e9;
+  for(const ds of[-320,-250,250,320]){const sv=clamp(bs.s+ds,12,R.len-12),p=pointAt(M.road,sv),sc=(p.x-F.x)*ox+(p.y-F.y)*oy;if(sc>bd){bd=sc;best={x:p.x,y:p.y};}}
+  SAFE=best;
+  for(let i=0;i<M.res;i++){
+    const side=i%2?1:-1,sv=clamp(bs.s+side*(30+Math.floor(i/2)*36+i*5),8,R.len-8),p=pointAt(M.road,sv),nn=sideNormal(p.a);
+    const lat=(R.w/2-12)*(i%3===0?1:-1);
+    RES.push({x:p.x+nn.x*lat,y:p.y+nn.y*lat,state:'wait',hp:100,ang:0,walk:0});
+  }
+}
+function resUpdate(dt){
+  if(!RES.length||!PP||G.ph!=='fight')return;
+  const h=PP.hist||(PP.hist=[]),l=h[h.length-1];
+  if(!l||Math.hypot(PP.x-l[0],PP.y-l[1])>7){h.push([PP.x,PP.y]);if(h.length>240)h.shift();}
+  let k=0;const burn=[F].concat(neigh).filter(q=>q.burning);
+  for(const r of RES){
+    if(r.state==='hurt')continue;
+    if(r.state==='wait'&&Math.hypot(PP.x-r.x,PP.y-r.y)<40){r.state='follow';toast('居民跟著你，帶他們到綠色集合點（上風處）','',2000);}
+    if(r.state==='follow'){
+      k++;let tg=h[Math.max(0,h.length-1-6*k)]||[PP.x,PP.y];
+      if(SAFE&&Math.hypot(PP.x-SAFE.x,PP.y-SAFE.y)<90)tg=[SAFE.x+Math.cos(k*2.1)*18,SAFE.y+Math.sin(k*2.1)*18];
+      const dx=tg[0]-r.x,dy=tg[1]-r.y,d=Math.hypot(dx,dy);
+      if(d>4){const st=Math.min(d,88*dt);r.x+=dx/d*st;r.y+=dy/d*st;r.ang=Math.atan2(dy,dx);r.walk+=dt*10;}
+      if(SAFE&&Math.hypot(r.x-SAFE.x,r.y-SAFE.y)<46){r.state='safe';beep(880,.2,'triangle',.1);toast('居民安全抵達集合點','',1600);}
+    }
+    if(r.state!=='safe'){
+      for(const q of burn)if(Math.hypot(r.x-q.cx,r.y-q.cy)<100){r.hp-=9*dt;break;}
+      if(r.hp<=0){r.state='hurt';G.s.resHurt++;toast('居民被火勢波及受傷！','bad',2400);buzz(60);}
+    }
+  }
+}
+function drawRes(){
+  if(SAFE){const pul=1+.06*Math.sin(tnow*4);ctx.save();ctx.strokeStyle='#4cc38a';ctx.lineWidth=3;ctx.setLineDash([8,7]);ctx.beginPath();ctx.arc(SAFE.x,SAFE.y,46*pul,0,6.3);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=.14;ctx.fillStyle='#4cc38a';ctx.beginPath();ctx.arc(SAFE.x,SAFE.y,46,0,6.3);ctx.fill();ctx.globalAlpha=1;ctx.fillStyle='#4cc38a';ctx.font='800 '+Math.round(12/cam.z)+'px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('集合點',SAFE.x,SAFE.y-58);ctx.restore();}
+  for(const r of RES){
+    if(r.state==='hurt'){ctx.strokeStyle='#ff4d4d';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(r.x-6,r.y-6);ctx.lineTo(r.x+6,r.y+6);ctx.moveTo(r.x+6,r.y-6);ctx.lineTo(r.x-6,r.y+6);ctx.stroke();continue;}
+    drawFF(r.x,r.y,r.ang,r.walk,'#7ad0ff');
+    if(r.state==='wait'&&Math.sin(tnow*6)>0){ctx.fillStyle='#ff4d4d';ctx.beginPath();ctx.arc(r.x,r.y-16,6,0,6.3);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 10px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('!',r.x,r.y-16);}
+    if(r.state!=='safe'&&r.hp<100){ctx.fillStyle='rgba(10,16,24,.8)';ctx.fillRect(r.x-9,r.y+11,18,3);ctx.fillStyle='#ff6b5e';ctx.fillRect(r.x-9,r.y+11,18*r.hp/100,3);}
+  }
+}
+/* ---------- 閃燃／瓦斯警告 ---------- */
+function hazUpdate(dt){
+  if(G.stun>0)G.stun-=dt;
+  if(G.ph==='rescue'&&PP&&MIS[G.mi].quake){quakeHaz(dt);return;}
+  if(G.ph!=='fight'||!PP||F.out){haz=null;return;}
+  if(haz){
+    haz.t-=dt;
+    if(haz.t<=0){
+      const d=Math.hypot(PP.x-haz.x,PP.y-haz.y);
+      if(d<haz.r){
+        G.s.ffHit++;G.stun=1.6;shake=1;buzz(120);beep(150,.4,'sawtooth',.14);
+        toast(haz.k==='flash'?'消防員被閃燃火焰波及！':'消防員吸入有毒氣體！','bad',2600);
+        const kx=(PP.x-haz.x)/(d||1),ky=(PP.y-haz.y)/(d||1);
+        for(let q=60;q>=10;q-=10){const nx=PP.x+kx*q,ny=PP.y+ky*q;if(sd(nx,ny)>=-14){PP.x=nx;PP.y=ny;break;}}
+      }else{G.s.ffDodge++;toast('成功避開！','',1600);beep(880,.15,'triangle',.08);}
+      if(haz.k==='flash')for(let i=0;i<18;i++)fx.push({type:'p',x:haz.x+(Math.random()-.5)*haz.r,y:haz.y+(Math.random()-.5)*haz.r,vx:(Math.random()-.5)*160,vy:(Math.random()-.5)*160,life:.6});
+      haz=null;G.hazT=16+Math.random()*10;
+    }
+    return;
+  }
+  G.hazT-=dt;
+  if(G.hazN<3&&G.hazT<=0){
+    const k=Math.random()<.5?'flash':'gas';
+    let c;
+    if(k==='flash'){const bs=[F].concat(neigh).filter(q=>q.burning);c=bs.length?bs[(Math.random()*bs.length)|0]:F;}
+    else c=neigh.length?neigh[(Math.random()*neigh.length)|0]:F;
+    const r=k==='flash'?120:100;
+    if(Math.hypot(PP.x-c.cx,PP.y-c.cy)>r+90){G.hazT=3;return;}
+    haz={k,x:c.cx,y:c.cy,r,t:k==='flash'?4.5:6.5,t0:k==='flash'?4.5:6.5};G.hazN++;
+    toast(k==='flash'?'⚠ 閃燃警告！消防員快後退，離開紅色範圍！':'⚠ 瓦斯外洩！快離開紅色範圍！','bad',3000);buzz(80);
+    beep(300,.18,'square',.1);setTimeout(()=>beep(300,.18,'square',.1),240);
+  }
+}
+function drawHaz(){
+  if(!haz)return;
+  const p=.5+.5*Math.sin(tnow*10),col=haz.k==='flash'?'255,70,40':haz.k==='quake'?'255,170,60':'200,220,60';
+  ctx.save();ctx.fillStyle='rgba('+col+','+(.12+.14*p)+')';ctx.beginPath();ctx.arc(haz.x,haz.y,haz.r,0,6.3);ctx.fill();
+  ctx.strokeStyle='rgba('+col+',.95)';ctx.lineWidth=4;ctx.setLineDash([12,9]);ctx.beginPath();ctx.arc(haz.x,haz.y,haz.r,0,6.3);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#fff';ctx.font='900 '+Math.round(26/cam.z)+'px '+FONT;ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(Math.ceil(haz.t),haz.x,haz.y-8/cam.z);
+  ctx.font='800 '+Math.round(13/cam.z)+'px '+FONT;ctx.fillText(haz.k==='flash'?'閃燃':haz.k==='quake'?'落石':'瓦斯',haz.x,haz.y+16/cam.z);ctx.restore();
+}
+/* ---------- 雨天 ---------- */
+function drawRain(){
+  if(!MIS[G.mi].rain)return;
+  ctx.fillStyle='rgba(14,30,52,.22)';ctx.fillRect(0,0,vw,vh);
+  const g=ctx.createRadialGradient(vw/2,vh/2,Math.min(vw,vh)*.22,vw/2,vh/2,Math.max(vw,vh)*.72);
+  g.addColorStop(0,'rgba(8,14,26,0)');g.addColorStop(1,'rgba(8,14,26,.6)');ctx.fillStyle=g;ctx.fillRect(0,0,vw,vh);
+  ctx.strokeStyle='rgba(190,215,240,.45)';ctx.lineWidth=1.2;ctx.beginPath();
+  for(let i=0;i<120;i++){const sp=520+(i*37%220),x=((i*97.3+tnow*70)%(vw+80))-40,y=((i*61.7+tnow*sp)%(vh+60))-30;ctx.moveTo(x,y);ctx.lineTo(x-5,y+16);}
+  ctx.stroke();
+}
+/* ---------- 出勤前裝備檢查 ---------- */
+function kitSheet(){
+  const M=MIS[G.mi];
+  const req=['空氣呼吸器','消防水帶','防護衣帽'];
+  if(M.vic||M.res)req.push('擔架');
+  if(M.vic)req.push('AED 自動體外電擊器');
+  if(M.tower)req.push('雲梯安全吊帶');
+  if(M.night)req.push('照明燈具');
+  if(M.row)req.push('熱顯像儀');
+  if(M.rain)req.push('防滑反光背心');
+  if(M.ems){req.length=0;req.push('急救箱（含血壓計、血氧機）','擔架','AED 自動體外電擊器','氧氣急救設備','防護手套與口罩');}
+  if(M.co){req.length=0;req.push('空氣呼吸器','四用氣體偵測器（含一氧化碳）','擔架','AED 自動體外電擊器','氧氣急救設備','防護衣帽');}
+  if(M.quake){req.length=0;req.push('防護衣帽','頭盔與手套','擔架','AED 自動體外電擊器','生命探測器','油壓擴張器（破壞器材）');}
+  const bad=['野餐墊','釣魚竿','音響喇叭','遙控賽車'].sort(()=>Math.random()-.5).slice(0,3);
+  const items=req.map(n=>({n,ok:1})).concat(bad.map(n=>({n,ok:0}))).sort(()=>Math.random()-.5);
+  G.kit={items,sel:new Set()};G.mode='kit';
+  sheet('<span class="sub">出勤前裝備檢查</span><h2>這一件要帶哪些裝備？</h2>'+
+    '<p>點選本案<b>需要攜帶</b>的裝備（可複選），選好按「確認出發」。全對有加分。</p>'+
+    '<div class="pick">'+items.map((it,i)=>'<button type="button" data-a="kit'+i+'">'+esc(it.n)+'</button>').join('')+'</div>'+
+    '<p id="kitmsg" class="lesson" hidden></p>'+
+    '<div class="btns"><button type="button" data-a="kitskip">略過（無加分）</button><button type="button" class="go" data-a="kitok">確認出發</button></div>');
+}
+function kitCheck(){
+  const k=G.kit,miss=[],extra=[];
+  k.items.forEach((it,i)=>{const on=k.sel.has(i);if(it.ok&&!on)miss.push(it.n);if(!it.ok&&on)extra.push(it.n);});
+  if(!miss.length&&!extra.length){G.kitBonus=G.kitWrong?25:60;toast(G.kitWrong?'裝備齊全！':'裝備全對！加分','',1800);startRun();return;}
+  G.kitWrong=1;const m=$('#kitmsg');m.hidden=false;
+  m.innerHTML=(miss.length?'<b>漏帶：</b>'+miss.map(esc).join('、')+'。':'')+(extra.length?'<b>不需要：</b>'+extra.map(esc).join('、')+'。':'')+' 再檢查一次。';
+}
+function startRun(){
+  ovEl.hidden=true;G.mode='play';
+  if(MIS[G.mi].rain)toast('下雨路滑：煞車距離變長、轉向變慢','warn',3200);
+}
+function pause(){
+  if(G.mode!=='play')return;
+  G.mode='paused';inp.l=inp.r=inp.gas=inp.brk=inp.spray=0;document.querySelectorAll('.pad').forEach(b=>b.classList.remove('on'));
+  sheet('<h2>暫停中</h2><div class="btns"><button type="button" data-a="menu">回主畫面</button><button type="button" class="go" data-a="resume">繼續</button></div>');
+}
+function hold(id,key){
+  const b=$(id);
+  const on=e=>{e.preventDefault();inp[key]=1;b.classList.add('on');try{b.setPointerCapture(e.pointerId);}catch(_){}};
+  const off=()=>{inp[key]=0;b.classList.remove('on');};
+  b.addEventListener('pointerdown',on);
+  ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev,off));
+  b.addEventListener('contextmenu',e=>e.preventDefault());
+}
+hold('#bL','l');hold('#bR','r');hold('#bGas','gas');hold('#bBrk','brk');
+{const hb=$('#honk');
+hb.addEventListener('pointerdown',e=>{e.preventDefault();if(G.ph==='fight'){inp.spray=1;hb.classList.add('on');try{hb.setPointerCapture(e.pointerId);}catch(_){}}else honk();});
+['pointerup','pointercancel','lostpointercapture'].forEach(ev=>hb.addEventListener(ev,()=>{inp.spray=0;hb.classList.remove('on');}));}
+$('#pauseBtn').addEventListener('click',pause);
+$('#snd').addEventListener('click',()=>{muted=!muted;$('#snd').textContent='音效'+(muted?'關':'');});
+const KM={ArrowLeft:'l',a:'l',ArrowRight:'r',d:'r',ArrowUp:'gas',w:'gas',ArrowDown:'brk',s:'brk'};
+addEventListener('keydown',e=>{const k=KM[e.key];if(k&&G.mode==='play'){inp[k]=1;e.preventDefault();}else if(e.key===' '&&G.mode==='play'){e.preventDefault();if(G.ph==='fight')inp.spray=1;else honk();}else if(e.key==='Escape'||e.key==='p'){G.mode==='play'?pause():G.mode==='paused'&&act('resume');}});
+addEventListener('keyup',e=>{const k=KM[e.key];if(k)inp[k]=0;if(e.key===' ')inp.spray=0;});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
+addEventListener('blur',()=>{inp.l=inp.r=inp.gas=inp.brk=inp.spray=0;});
+let last=0;
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt=Math.min(.05,(now-last)/1000||0);last=now;tnow=now/1000;
+  if(G.mode==='play')update(dt);else if(G.mode==='quake')quakeUpdate(dt);
+  if(laneWant&&G.mode==='play'&&V){laneWant=0;laneShown=1;laneCard();}
+  if(vw&&F){render(dt);hud();sirenUpdate();}
+}
+window.__t={finish:(a,b)=>finishMission(a,b),RESget:()=>({RES,SAFE,haz}),hooks:()=>({startLay,startD2,startPull,connected,startFight,startLadder,spawnVeh,fightDone}),honk,G,inp,update,get:()=>({neigh,npcs,V,PP,F,PT,cars,park,goal:goalNow(),gps,cam,trail,blk,hyd}),route,MIS,LIGHTS,lightGreen,loadMission,act,VICS:()=>VICS,render:()=>render(0)};
+resize();menu();
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body></html>
